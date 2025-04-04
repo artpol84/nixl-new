@@ -465,7 +465,7 @@ nixlUcxMoEngine::retHelper(nixl_status_t ret, nixlBackendEngine *eng,
 }
 
 nixl_status_t
-nixlUcxMoEngine::prepXfer (const nixl_xfer_op_t &op,
+nixlUcxMoEngine::prepXfer (const nixl_xfer_op_t &operation,
                            const nixl_meta_dlist_t &local,
                            const nixl_meta_dlist_t &remote,
                            const std::string &remote_agent,
@@ -479,7 +479,7 @@ nixlUcxMoEngine::prepXfer (const nixl_xfer_op_t &op,
     }
 
     // Check operation type
-    switch(op) {
+    switch(operation) {
         case NIXL_READ:
         case NIXL_WRITE:
             break;
@@ -552,7 +552,7 @@ error:
 
 // Data transfer
 nixl_status_t
-nixlUcxMoEngine::postXfer (const nixl_xfer_op_t &op,
+nixlUcxMoEngine::postXfer (const nixl_xfer_op_t &operation,
                            const nixl_meta_dlist_t &local,
                            const nixl_meta_dlist_t &remote,
                            const std::string &remote_agent,
@@ -571,7 +571,7 @@ nixlUcxMoEngine::postXfer (const nixl_xfer_op_t &op,
                 // Skip unused matrix elements
                 continue;
             }
-            ret = engines[lidx]->postXfer(op,
+            ret = engines[lidx]->postXfer(operation,
                                           *req->dlMatrix[lidx][ridx].first,
                                           *req->dlMatrix[lidx][ridx].second,
                                           getEngName(remote_agent, ridx),
