@@ -57,7 +57,7 @@ public:
             prepare = true;
             release = true;
         }
-        handle = NULL;
+        handle = nullptr;
         set = false;
     }
 
@@ -397,7 +397,7 @@ void performTransfer(nixlBackendEngine *ucx1, nixlBackendEngine *ucx2,
     // or an ID that later can be used to check the status as a new method
     // Also maybe we would remove the WRITE and let the backend class decide the op
     if (hiter.needPrep()) {
-        nixlBackendReqH *new_handle = NULL;
+        nixlBackendReqH *new_handle = nullptr;
         ret3 = ucx1->prepXfer(op, req_src_descs, req_dst_descs, remote_agent, new_handle, &opt_args);
         assert(ret3 == NIXL_SUCCESS);
         hiter.setHandle(new_handle);
