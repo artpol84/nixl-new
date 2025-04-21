@@ -43,6 +43,7 @@ static void checkCudaError(cudaError_t result, const char *message) {
 class testHndlIterator {
 private:
     bool reuse;
+    bool set;
     bool prepare;
     bool release;
     nixlBackendReqH* handle;
@@ -53,15 +54,16 @@ public:
             prepare = true;
             release = false;
         } else {
-            initialized = true;
+            prepare = true;
             release = true;
         }
         handle = NULL;
+        set = false;
     }
 
     ~testHndlIterator() {
         /* Make sure that handler was released */
-        assert(handle == NULL);
+        assert(!set);
     }
 
     bool needPrep() {
@@ -85,20 +87,21 @@ public:
     
     void setHandle(nixlBackendReqH *_handle)
     {
-        assert(handle == NULL);
+        assert(!set);
         handle = _handle;
+        set = true;
         if (reuse) {
             prepare = false;
         }
     }
 
     void unsetHandle() {
-        assert(handle);
-        handle = NULL;
+        assert(set);
+        set = false;
     }
 
     nixlBackendReqH *&getHandle() {
-        assert(handle);
+        assert(set);
         return handle;
     }
     
@@ -394,9 +397,9 @@ void performTransfer(nixlBackendEngine *ucx1, nixlBackendEngine *ucx2,
     // or an ID that later can be used to check the status as a new method
     // Also maybe we would remove the WRITE and let the backend class decide the op
     if (hiter.needPrep()) {
-        nixlBackendReqH *new_handle;
-        status = ucx1->prepXfer(op, req_src_descs, req_dst_descs, remote_agent, new_handle, &opt_args);
-        assert(status == NIXL_SUCCESS);
+        nixlBackendReqH *new_handle = NULL;
+        ret3 = ucx1->prepXfer(op, req_src_descs, req_dst_descs, remote_agent, new_handle, &opt_args);
+        assert(ret3 == NIXL_SUCCESS);
         hiter.setHandle(new_handle);
     }
     nixlBackendReqH *&handle = hiter.getHandle();
@@ -468,8 +471,9 @@ void test_intra_agent_transfer(bool p_thread, nixlBackendEngine *ucx, nixl_mem_t
 
     std::cout << std::endl << std::endl;
     std::cout << "****************************************************" << std::endl;
-    std::cout << "   Intra-agent memory transfer test: " <<
-            "P-Thr=" << (p_thread ? "ON" : "OFF") << ", " << memType2Str(mem_type) << std::endl;
+    std::cout << "   Intra-agent memory transfer test: "
+              << "P-Thr=" << (p_thread ? "ON" : "OFF") << ", " << memType2Str(mem_type) 
+              << std::endl;
     std::cout << "****************************************************" << std::endl;
     std::cout << std::endl << std::endl;
 
@@ -547,8 +551,9 @@ void test_inter_agent_transfer(bool p_thread, bool reuse_hndl,
 
     std::cout << std::endl << std::endl;
     std::cout << "****************************************************" << std::endl;
-    std::cout << "    Inter-agent memory transfer test P-Thr=" <<
-                        (p_thread ? "ON" : "OFF") << std::endl;
+    std::cout << "    Inter-agent memory transfer test " << std::endl;
+    std::cout << "         P-Thr=" << (p_thread ? "ON" : "OFF") << std::endl;
+    std::cout << "         Handler-reuse=" << (reuse_hndl ? "ON" : "OFF") << std::endl;
     std::cout << "         (" << memType2Str(src_mem_type) << " -> "
                 << memType2Str(dst_mem_type) << ")" << std::endl;
     std::cout << "****************************************************" << std::endl;
@@ -611,6 +616,10 @@ void test_inter_agent_transfer(bool p_thread, bool reuse_hndl,
                 doMemset(dst_mem_type, dst_dev_id, addr2, 0xda, len);
 
                 /* Test */
+                if ((k+1) == iter) {
+                    /* If this is the last iteration */
+                    hiter.isLast();
+                }
                 performTransfer(ucx1, ucx2, req_src_descs, req_dst_descs,
                                 addr1, addr2, len, ops[i], hiter, !p_thread, use_notif);
             }
