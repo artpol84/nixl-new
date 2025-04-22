@@ -253,11 +253,11 @@ public:
     void append(nixlUcxIntReq *req) {
         head.link(req);
     }
-    
+
     nixl_status_t release()
     {
         nixlUcxIntReq *req = head.next();
-   
+
         if (!req) {
             return NIXL_SUCCESS;
         }
