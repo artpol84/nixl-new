@@ -64,30 +64,30 @@ private:
 
     class dlMatrixElem {
     public:
-        bool in_use;
+        bool in_use, in_progress;
         nixl_meta_dlist_t *ldescs;
         nixl_meta_dlist_t *rdescs;
         nixlBackendReqH *ucx_req;
 
         dlMatrixElem() {
             in_use = false;
+            in_progress = false;
             ldescs = nullptr;
             rdescs = nullptr;
             ucx_req = nullptr;
         }
     };
 
-    typedef std::vector<std::vector<dl_matrix_elem_t>> dl_matrix_t;
+    typedef std::vector<std::vector<dlMatrixElem>> dl_matrix_t;
 
     dl_matrix_t dlMatrix;
-    req_list_t reqs;
 
     std::string remoteAgent;
     bool notifNeed;
     std::string notifMsg;
 public:
     nixlUcxMoRequestH(size_t l_eng_cnt, size_t r_eng_cnt) :
-        dlMatrix(l_eng_cnt, std::vector<dl_pair_t>(r_eng_cnt, dl_pair_t{ NULL, NULL }))
+        dlMatrix(l_eng_cnt, std::vector<dlMatrixElem>(r_eng_cnt, dlMatrixElem()))
     {
         notifNeed = false;
     }
@@ -498,6 +498,7 @@ nixlUcxMoEngine::prepXfer (const nixl_xfer_op_t &operation,
                            const nixl_opt_b_args_t *opt_args)
 {
     size_t lidx, ridx;
+    size_t lidx_max, ridx_max;
 
     // Number of local and remote descriptors must match
     int des_cnt = local.descCount();
@@ -548,7 +549,7 @@ nixlUcxMoEngine::prepXfer (const nixl_xfer_op_t &operation,
         }
 
         /* Allocate internal dlists if needed */
-        if (NULL == req->dlMatrix[lidx][ridx].first) {
+        if (!req->dlMatrix[lidx][ridx].in_use) {
             req->dlMatrix[lidx][ridx].in_use = true;
             req->dlMatrix[lidx][ridx].ldescs = new nixl_meta_dlist_t (
                                                 local.getType(),
@@ -594,10 +595,11 @@ nixlUcxMoEngine::prepXfer (const nixl_xfer_op_t &operation,
 
 err_clean_sub_req:
     /* Release only allocated requests */
-    size_t lidx_max = lidx + 1;
-    size_t ridx_max = ridx;
+    lidx_max = lidx + 1;
+    ridx_max = ridx;
     for(lidx = 0; lidx < lidx_max; lidx++) {
         for(ridx = 0; ridx < ridx_max; ridx++) {
+            nixl_status_t ret;
 
             if (!req->dlMatrix[lidx][ridx].in_use) {
                 // Skip unused matrix elements
@@ -627,26 +629,7 @@ nixlUcxMoEngine::postXfer (const nixl_xfer_op_t &operation,
                            const nixl_opt_b_args_t *opt_args)
 {
     nixlUcxMoRequestH *req = (nixlUcxMoRequestH *)handle;
-
-
-    for(lidx = 0; lidx < req->dlMatrix.size(); lidx++) {
-        for(ridx = 0; ridx < req->dlMatrix[lidx].size(); ridx++) {
-            nixl_status_t ret;
-
-            if (!req->dlMatrix[lidx][ridx].in_use) {
-                // Skip unused matrix elements
-                continue;
-            }
-            ret = engines[lidx]->prepXfer(operation,
-                                          *req->dlMatrix[lidx][ridx].ldescs,
-                                          *req->dlMatrix[lidx][ridx].rdescs,
-                                          getEngName(remote_agent, ridx),
-                                          req->dlMatrix[lidx][ridx].ucx_req);
-            if (NIXL_SUCCESS != ret) {
-                goto err_clean_sub_req;
-            }
-        }
-    }
+    bool in_progress = false;
 
     for(size_t lidx = 0; lidx < req->dlMatrix.size(); lidx++) {
         for(size_t ridx = 0; ridx < req->dlMatrix[lidx].size(); ridx++) {
@@ -658,12 +641,21 @@ nixlUcxMoEngine::postXfer (const nixl_xfer_op_t &operation,
             }
 
             ret = engines[lidx]->postXfer(operation,
-                                          *req->dlMatrix[lidx][ridx].first,
-                                          *req->dlMatrix[lidx][ridx].second,
+                                          *req->dlMatrix[lidx][ridx].ldescs,
+                                          *req->dlMatrix[lidx][ridx].rdescs,
                                           getEngName(remote_agent, ridx),
                                           req->dlMatrix[lidx][ridx].ucx_req);
-            ret = retHelper(ret, engines[lidx], req, req->dlMatrix[lidx][ridx].ucx_req);
-            if (NIXL_SUCCESS != ret) {
+
+            /* if transfer wasn't immediately completed */
+            switch(ret) {
+            case NIXL_IN_PROG:
+                req->dlMatrix[lidx][ridx].in_progress = true;
+                in_progress = true;
+            case NIXL_SUCCESS:
+                // Nothing to do
+                break;
+            default:
+                // Error.
                 return ret;
             }
         }
@@ -675,15 +667,28 @@ nixlUcxMoEngine::postXfer (const nixl_xfer_op_t &operation,
         // as we need to chose one of the workers to send it,
         // but we can only be sent after all workers are flushed.
         // Instead, we will initiate Notification from the CheckXfer
-        req->notifNeed = true;
-        req->notifMsg = opt_args->notifMsg;
-        req->remoteAgent = remote_agent;
+
+        if (!in_progress) {
+
+        } else {
+            req->notifNeed = true;
+            req->notifMsg = opt_args->notifMsg;
+            req->remoteAgent = remote_agent;
+        }
     }
 
-    if (req->reqs.size()) {
+    if (in_progress) {
         return NIXL_IN_PROG;
     } else {
-        delete req;
+        if(req->notifNeed) {
+            nixl_status_t ret;
+    
+            ret = engines[0]->genNotif(getEngName(req->remoteAgent, 0), req->notifMsg);
+            if (NIXL_SUCCESS != ret) {
+                /* Return error, TODO: add output */
+                return ret;
+            }
+        }
         return  NIXL_SUCCESS;
     }
 }
@@ -692,17 +697,14 @@ nixl_status_t
 nixlUcxMoEngine::checkXfer (nixlBackendReqH *handle)
 {
     nixlUcxMoRequestH *req = (nixlUcxMoRequestH *)handle;
-    nixlUcxMoRequestH::req_list_t &l = req->reqs;
-    nixlUcxMoRequestH::req_list_it_t it;
     nixl_status_t out_ret = NIXL_SUCCESS;
-
 
     for(size_t lidx = 0; lidx < req->dlMatrix.size(); lidx++) {
         for(size_t ridx = 0; ridx < req->dlMatrix[lidx].size(); ridx++) {
             nixl_status_t ret;
 
-            if (!req->dlMatrix[lidx][ridx].in_use) {
-                // Skip unused matrix elements
+            if (!req->dlMatrix[lidx][ridx].in_progress) {
+                // Skip not-in-progress matrix elements
                 continue;
             }
 
@@ -710,17 +712,16 @@ nixlUcxMoEngine::checkXfer (nixlBackendReqH *handle)
             switch (ret) {
             case NIXL_SUCCESS:
                 /* Mark as completed */
-                engines[lidx]->releaseReqH(req->dlMatrix[lidx][ridx].ucx_req);
-                it = l.erase(it);
+                req->dlMatrix[lidx][ridx].in_progress = false;
                 break;
             case NIXL_IN_PROG:
                 out_ret = NIXL_IN_PROG;
-                it++;
                 break;
             default:
                 /* Any other ret value is unexpected */
                 return ret;
             }
+        }
     }
 
     if ((NIXL_SUCCESS == out_ret) && req->notifNeed) {
@@ -730,7 +731,7 @@ nixlUcxMoEngine::checkXfer (nixlBackendReqH *handle)
         // it is safe to send Notification
         ret = engines[0]->genNotif(getEngName(req->remoteAgent, 0), req->notifMsg);
         if (NIXL_SUCCESS != ret) {
-            /* Mark as completed */
+            /* Return error, TODO: add output */
             return ret;
         }
     }
@@ -742,23 +743,26 @@ nixl_status_t
 nixlUcxMoEngine::releaseReqH(nixlBackendReqH* handle)
 {
     nixlUcxMoRequestH *req = (nixlUcxMoRequestH *)handle;
+    nixl_status_t out_ret = NIXL_SUCCESS;
 
     for(size_t lidx = 0; lidx < req->dlMatrix.size(); lidx++) {
         for(size_t ridx = 0; ridx < req->dlMatrix[lidx].size(); ridx++) {
+            nixl_status_t ret;
 
             if (!req->dlMatrix[lidx][ridx].in_use) {
                 // Skip unused matrix elements
                 continue;
             }
 
-            engines[lidx]->releaseReqH(req->dlMatrix[lidx][ridx].ucx_req);
+            ret = engines[lidx]->releaseReqH(req->dlMatrix[lidx][ridx].ucx_req);
             if (NIXL_SUCCESS != ret) {
                 // TODO: Output error, but still continue trying to fix others
+                out_ret = ret;
             }
         }
     }
 
-    return NIXL_SUCCESS;
+    return out_ret;
 }
 
 int
