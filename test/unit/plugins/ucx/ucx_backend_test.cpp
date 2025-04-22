@@ -76,7 +76,7 @@ public:
     }
 
     bool needRelease() {
-        return release; 
+        return release;
     }
 
     void isLast() {
@@ -84,7 +84,7 @@ public:
             release = true;
         }
     }
-    
+
     void setHandle(nixlBackendReqH *_handle)
     {
         assert(!set);
@@ -104,7 +104,6 @@ public:
         assert(set);
         return handle;
     }
-    
 };
 
 
@@ -472,7 +471,7 @@ void test_intra_agent_transfer(bool p_thread, nixlBackendEngine *ucx, nixl_mem_t
     std::cout << std::endl << std::endl;
     std::cout << "****************************************************" << std::endl;
     std::cout << "   Intra-agent memory transfer test: "
-              << "P-Thr=" << (p_thread ? "ON" : "OFF") << ", " << memType2Str(mem_type) 
+              << "P-Thr=" << (p_thread ? "ON" : "OFF") << ", " << memType2Str(mem_type)
               << std::endl;
     std::cout << "****************************************************" << std::endl;
     std::cout << std::endl << std::endl;
@@ -715,7 +714,6 @@ int main()
         test_inter_agent_transfer(thread_on[i], true,
                                   ucx[i][0], DRAM_SEG, 0,
                                   ucx[i][1], DRAM_SEG, 0);
-  
 
 #ifdef HAVE_CUDA
         if (n_vram_dev > 1) {
