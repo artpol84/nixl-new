@@ -107,9 +107,8 @@ public:
     }
 
     friend class nixlUcxMoEngine;
-
 };
-    
+
 
 /****************************************
  * UCX Engine management
@@ -682,7 +681,7 @@ nixlUcxMoEngine::postXfer (const nixl_xfer_op_t &operation,
     } else {
         if(req->notifNeed) {
             nixl_status_t ret;
-    
+
             ret = engines[0]->genNotif(getEngName(req->remoteAgent, 0), req->notifMsg);
             if (NIXL_SUCCESS != ret) {
                 /* Return error, TODO: add output */
