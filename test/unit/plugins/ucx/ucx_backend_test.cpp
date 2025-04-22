@@ -418,12 +418,12 @@ void performTransfer(nixlBackendEngine *ucx1, nixlBackendEngine *ucx2,
             }
             assert( ret3 == NIXL_SUCCESS || ret3 == NIXL_IN_PROG);
         }
-        if (hiter.needRelease()) {
-            hiter.unsetHandle();
-            ucx1->releaseReqH(handle);
-        }
     }
 
+    if (hiter.needRelease()) {
+        hiter.unsetHandle();
+        ucx1->releaseReqH(handle);
+    }
 
     if(use_notif) {
             /* Test notification path */
