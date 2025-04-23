@@ -723,7 +723,7 @@ int main()
             test_inter_agent_transfer(thread_on[i], true,
                                       ucx[i][0], VRAM_SEG, dev_ids[0],
                                       ucx[i][1], VRAM_SEG, dev_ids[1]);
-              test_inter_agent_transfer(thread_on[i], true,
+            test_inter_agent_transfer(thread_on[i], true,
                                       ucx[i][0], DRAM_SEG, dev_ids[0],
                                       ucx[i][1], VRAM_SEG, dev_ids[1]);
             test_inter_agent_transfer(thread_on[i], true,
