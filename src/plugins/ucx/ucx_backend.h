@@ -32,9 +32,10 @@
 #include "common/str_tools.h"
 
 // Local includes
-#include "common/nixl_time.h"
-#include "ucx/ucx_utils.h"
-#include "common/list_elem.h"
+#include <common/nixl_time.h>
+#include <ucx/ucx_utils.h>
+#include <common/list_elem.h>
+#include <cuda/cuda_utils.h>
 
 enum ucx_cb_op_t {CONN_CHECK, NOTIF_STR, DISCONNECT};
 
@@ -96,13 +97,6 @@ class nixlUcxPublicMetadata : public nixlBackendMD {
     friend class nixlUcxEngine;
 };
 
-// Forward declaration of CUDA context
-// It is only visible in ucx_backend.cpp to ensure that
-// HAVE_CUDA works properly
-// Once we will introduce static config (i.e. config.h) that
-// will be part of NIXL installation - we can have
-// HAVE_CUDA in h-files
-class nixlUcxCudaCtx;
 class nixlUcxEngine : public nixlBackendEngine {
     private:
         /* UCX data */
@@ -121,8 +115,7 @@ class nixlUcxEngine : public nixlBackendEngine {
         std::vector<pollfd> pollFds;
 
         /* CUDA data*/
-        std::unique_ptr<nixlUcxCudaCtx> cudaCtx;
-        bool cuda_addr_wa;
+        std::unique_ptr<nixlCuda::memCtx> cudaMemCtx;
 
         /* Notifications */
         notif_list_t notifMainList;
@@ -132,12 +125,6 @@ class nixlUcxEngine : public nixlBackendEngine {
         // Map of agent name to saved nixlUcxConnection info
         std::unordered_map<std::string, ucx_connection_ptr_t,
                            std::hash<std::string>, strEqual> remoteConnMap;
-
-
-        void vramInitCtx();
-        void vramFiniCtx();
-        int vramUpdateCtx(void *address, uint64_t devId, bool &restart_reqd);
-        int vramApplyCtx();
 
         // Threading infrastructure
         //   TODO: move the thread management one outside of NIXL common infra
