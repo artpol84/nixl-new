@@ -20,7 +20,7 @@
 #ifdef HAVE_CUDA
 
 #include <cuda_runtime.h>
-#include <cudart.h>
+#include <cuda.h>
 
 #endif
 
@@ -46,15 +46,15 @@ private:
 
 
     /* To be used in derived classes */
-    inline bool
-    intCompare(const nixlPtrCtxBase &_rhs) override {
-        const nixlPtrCtxCuda &rhs = *(const nixlPtrCtxCuda *)_rhs;
+    inline virtual bool
+    internalCmp(const nixlCudaPtrCtx &_rhs) override {
+        const nixlCudaPtrImpl &rhs = *(const nixlCudaPtrImpl *)&_rhs;
         switch (mem_type) {
         case MEM_HOST:
             return true;
         case MEM_DEV:
         case MEM_VMM_DEV:
-            return (dev == rhs.dev) &&
+            return (devId == rhs.devId) &&
                    (ctx == rhs.ctx);
             break;
         case MEM_VMM_HOST:
@@ -65,28 +65,30 @@ private:
         }
     }
 
+    nixl_status_t checkVmm(void *address);
+    nixl_status_t checkCuda(void *address);
+
 public:
 
-    nixlCudaPtrCtx(void *addr) : nixlCudaPtrCtx (addr)
+    nixlCudaPtrImpl(void *addr) : nixlCudaPtrCtx (addr)
     {
         nixl_status_t status;
-
-        supportVram = true;
     
         // Test VMM allocations first
-        status = initVmm(address);
+        status = checkVmm(address);
         if (status == NIXL_SUCCESS) {
             // This is VMM allocation, the class is initialized
             return;
         }
 
-        if (status != NIXL_ERR_NOT_SUPPORT) {
+        if (status != NIXL_ERR_NOT_FOUND) {
             // Unexpected error
             // TODO: throw status;
+            mem_type = MEM_INVALID;
         }
 
         // Continue with CUDA and Host allocations
-        status = initCuda(address);
+        status = checkCuda(address);
         if (status == NIXL_SUCCESS) {
             // Everything is initialized
             return;
@@ -97,11 +99,13 @@ public:
         }
     }
 
-    ~nixlCudaPtrCtx() override {
+    ~nixlCudaPtrImpl() override {
     }
 
+
+
     nixl_status_t setMemCtx() override;
-    void unsetMemCtx() override;
+    nixl_status_t unsetMemCtx() override;
 };
 
 #endif
@@ -126,7 +130,9 @@ public:
 
 bool nixlCudaPtrCtx::vramIsSupported()
 {
-    return NIXL_CUDA_PTR_CTX_VRAM_SUPPORT;
+
+    bool ret = NIXL_CUDA_PTR_CTX_VRAM_SUPPORT;
+    return ret;
 }
 
 std::unique_ptr<nixlCudaPtrCtx>
@@ -146,7 +152,7 @@ nixlCudaPtrCtx::nixlCudaPtrCtxInit(void *address)
 #ifdef HAVE_CUDA
 
 nixl_status_t
-nixlCudaPtrCtxImpl::checkVmm(void *address)
+nixlCudaPtrImpl::checkVmm(void *address)
 {
     nixl_status_t ret = NIXL_SUCCESS;
 
@@ -157,7 +163,7 @@ nixlCudaPtrCtxImpl::checkVmm(void *address)
 
     /* Check if memory is allocated using VMM API and see if host memory needs
      * to be treated as pinned device memory */
-    result = cuMemRetainAllocationHandle(&alloc_handle, (void*)address));
+    result = cuMemRetainAllocationHandle(&alloc_handle, (void*)address);
     if (result != CUDA_SUCCESS) {
         return NIXL_ERR_NOT_FOUND;
     }
@@ -170,18 +176,18 @@ nixlCudaPtrCtxImpl::checkVmm(void *address)
         goto err;
     }
 
-    dev = (CUdevice)prop.location.id;
+    devId = (CUdevice)prop.location.id;
     switch (prop.location.type) {
 #if HAVE_DECL_CU_MEM_LOCATION_TYPE_HOST
     case CU_MEM_LOCATION_TYPE_HOST:
     case CU_MEM_LOCATION_TYPE_HOST_NUMA:
     case CU_MEM_LOCATION_TYPE_HOST_NUMA_CURRENT:
         /* Do we need to set context in this case? */
-        type = MEM_VMM_HOST;
+        mem_type = MEM_VMM_HOST;
         break;
 #endif
     case CU_MEM_LOCATION_TYPE_DEVICE:
-        type = MEM_VMM_DEV;
+        mem_type = MEM_VMM_DEV;
         break;
     default:
         // This is VMM memory, but its invalid
@@ -203,9 +209,9 @@ err:
 
 
 nixl_status_t
-nixlCudaPtrCtxImpl::checkCuda(void *address)
+nixlCudaPtrImpl::checkCuda(void *address)
 {
-    CUmemorytype mem_type = CU_MEMORYTYPE_HOST;
+    CUmemorytype cuda_mem_type = CU_MEMORYTYPE_HOST;
     uint32_t is_managed = 0;
 #define NUM_ATTRS 4
     CUpointer_attribute attr_type[NUM_ATTRS];
@@ -213,11 +219,11 @@ nixlCudaPtrCtxImpl::checkCuda(void *address)
     CUresult result;
 
     attr_type[0] = CU_POINTER_ATTRIBUTE_MEMORY_TYPE;
-    attr_data[0] = &mem_type;
+    attr_data[0] = &cuda_mem_type;
     attr_type[1] = CU_POINTER_ATTRIBUTE_IS_MANAGED;
     attr_data[1] = &is_managed;
     attr_type[2] = CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL;
-    attr_data[2] = &dev;
+    attr_data[2] = &devId;
     attr_type[3] = CU_POINTER_ATTRIBUTE_CONTEXT;
     attr_data[3] = &ctx;
 
@@ -226,12 +232,12 @@ nixlCudaPtrCtxImpl::checkCuda(void *address)
         return NIXL_ERR_INVALID_PARAM;
     }
 
-    switch(mem_type) {
+    switch(cuda_mem_type) {
     case CU_MEMORYTYPE_DEVICE:
-        type = MEM_DEV;
+        mem_type = MEM_DEV;
         break;
     case CU_MEMORYTYPE_HOST:
-        type = MEM_HOST;
+        mem_type = MEM_HOST;
     case CU_MEMORYTYPE_ARRAY:
         // TODO: how should this case be processed?
     default:
@@ -244,11 +250,11 @@ nixlCudaPtrCtxImpl::checkCuda(void *address)
 }
 
 nixl_status_t
-nixlCudaPtrCtxImpl::setMemCtx()
+nixlCudaPtrImpl::setMemCtx()
 {
     CUresult result;
 
-    switch (type) {
+    switch (mem_type) {
     case MEM_HOST:
         return NIXL_SUCCESS;
     case MEM_DEV: {
@@ -264,7 +270,7 @@ nixlCudaPtrCtxImpl::setMemCtx()
         unsigned int flags;
         int active;
     
-        result = cuDevicePrimaryCtxGetState(dev, &flags, &active);
+        result = cuDevicePrimaryCtxGetState(devId, &flags, &active);
         if (result != CUDA_SUCCESS) {
             // TODO: log error
             return NIXL_ERR_UNKNOWN;
@@ -276,7 +282,7 @@ nixlCudaPtrCtxImpl::setMemCtx()
             return NIXL_ERR_INVALID_PARAM;
         }
     
-        result = cuDevicePrimaryCtxRetain(&ctx, dev);
+        result = cuDevicePrimaryCtxRetain(&ctx, devId);
         if (result != CUDA_SUCCESS) {
             // TODO: log error
             return NIXL_ERR_UNKNOWN;
@@ -292,15 +298,15 @@ nixlCudaPtrCtxImpl::setMemCtx()
 }
 
 nixl_status_t
-nixlCudaPtrCtxImpl::unsetMemCtx()
+nixlCudaPtrImpl::unsetMemCtx()
 {
-    switch (type) {
+    switch (mem_type) {
     case MEM_HOST:
     case MEM_DEV:
         return NIXL_SUCCESS;
     case MEM_VMM_DEV: {
         CUresult result;
-        result = cuDevicePrimaryCtxRelease(dev);
+        result = cuDevicePrimaryCtxRelease(devId);
         if (result != CUDA_SUCCESS) {
             // TODO: log error
             return NIXL_ERR_UNKNOWN;

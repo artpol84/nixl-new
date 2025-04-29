@@ -69,8 +69,9 @@ public:
         return NIXL_SUCCESS;
     }
 
-    virtual void unsetMemCtx() {
+    virtual nixl_status_t unsetMemCtx() {
         // no-op for non-CUDA case
+        return NIXL_SUCCESS;
     }
 
     inline bool operator==(const nixlCudaPtrCtx &rhs) {

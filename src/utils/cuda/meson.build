@@ -20,14 +20,13 @@ if cuda_dep.found()
     compile_flags += '-DHAVE_CUDA'
     cuda_utils_depends_from = [ cuda_dep ]
 
-    compiler = meson.get_compiler('c++')
     func ='cuMemRetainAllocationHandle'
-    if compiler.has_function(func, dependencies: cuda_dep)
+    if cpp.has_function(func, dependencies: cuda_dep)
         compile_flags += '-DHAVE_' + func.underscorify().to_upper() + '=1'
     endif
 
     macroName = 'CU_MEM_LOCATION_TYPE_HOST'
-    if compiler.has_define(macroName)
+    if cpp.has_define(macroName)
         compile_flags += '-DHAVE_' + macroName + '=1'
     endif
 endif
@@ -35,6 +34,7 @@ endif
 cuda_utils_lib = library('cuda_utils',
            'cuda_utils.cpp', 'cuda_utils.h',
            dependencies: cuda_utils_depends_from,
+           cpp_args : compile_flags,
            include_directories: [ nixl_inc_dirs ],
            install: true)
 

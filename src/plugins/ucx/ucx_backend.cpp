@@ -23,7 +23,8 @@ nixlUcxEngine::vramUpdateCtx(void *address, uint64_t  devId, bool &restart_reqd)
     restart_reqd = false;
 
     if (!nixlCudaPtrCtx::vramIsSupported()) {
-        return NIXL_SUCCESS;
+        // NIXL doesn't support CUDA but VRAM pointer was given
+        return NIXL_ERR_INVALID_PARAM;
     }
 
     // IF the workaround is globally disabled
@@ -68,7 +69,7 @@ nixlUcxEngine::vramUpdateCtx(void *address, uint64_t  devId, bool &restart_reqd)
     if (! (*ctx == *cudaPtrCtx)) {
         // TODO: log out error that for UCX that requires CUDA context to be set 
         // addresses from different contexts are used
-        return NIXL_ERR_INVALID_PARAM;
+        return NIXL_ERR_NOT_SUPPORTED;
     }
 
     return NIXL_SUCCESS;
@@ -83,13 +84,16 @@ nixl_status_t nixlUcxEngine::vramApplyCtx()
     return NIXL_SUCCESS;
 }
 
-void nixlUcxEngine::vramFiniCtx()
+nixl_status_t nixlUcxEngine::vramFiniCtx()
 {
+    nixl_status_t status = NIXL_SUCCESS;
     auto ctx = cudaPtrCtx.get();
     if (ctx) {
-        ctx->unsetMemCtx();
+        status = ctx->unsetMemCtx();
+
     }
     cudaPtrCtx.reset(nullptr);
+    return status;
 }
 
 /****************************************
@@ -369,7 +373,9 @@ nixlUcxEngine::~nixlUcxEngine () {
     }
 
     progressThreadStop();
-    vramFiniCtx();
+    if (NIXL_SUCCESS != vramFiniCtx()){
+        // TODO: log error
+    }
     delete uw;
     delete uc;
     free(workerAddr);
