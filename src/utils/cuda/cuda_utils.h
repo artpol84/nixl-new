@@ -17,65 +17,69 @@
 
 /* forward declaration for the internal CUDA data structure */
 
-
-enum class nixl_cuda_mem_t {
-    NIXL_CUDA_MEM_NONE,
-    NIXL_CUDA_MEM_HOST,
-    NIXL_CUDA_MEM_DEV,
-    NIXL_CUDA_MEM_VMM_HOST,
-    NIXL_CUDA_MEM_VMM_DEV,
-    NIXL_CUDA_MEM_INVALID,
-};
+#include <nixl.h>
+#include <memory>
 
 /****************************************
  * Pointer Context
 *****************************************/
 
 class nixlCudaPtrCtx {
+public:
+    typedef enum {
+        MEM_NONE,
+        MEM_HOST,
+        MEM_DEV,
+        MEM_VMM_HOST,
+        MEM_VMM_DEV,
+        MEM_INVALID,
+    } memory_t;
+
 protected:
     void *address;
-    nixl_cuda_mem_t mem_type;
-    int devId;
+    memory_t mem_type;
+    uint64_t devId;
 
     /* To be used in derived classes */
     inline virtual bool
-    internalCmp(const nixlCudaPtrCtx &lhs, 
-                const nixlCudaPtrCtx &rhs) {
+    internalCmp(const nixlCudaPtrCtx &rhs) {
         return true;
     }
 
 public:
-    nixlCudaPtrCtx(void *addr) :
-                   address(addr), type(NIXL_CUDA_PTR_HOST), 
-                   supportVram(false), devId(0)
+
+
+    nixlCudaPtrCtx(void *addr) : address(addr),
+                                 mem_type(MEM_HOST),
+                                 devId(0)
     { /* Empty body */ }
 
     virtual ~nixlCudaPtrCtx() = default;
 
-    inline nixl_cuda_mem_t getMemType() {
+    inline memory_t getMemType() {
         return mem_type;
     }
 
-    inline int getDevId() {
+    inline uint64_t getDevId() {
         return devId;
     }
 
-    virtual void setMemCtx() {
+    virtual nixl_status_t setMemCtx() {
         // no-op for non-CUDA case
+        return NIXL_SUCCESS;
     }
 
     virtual void unsetMemCtx() {
         // no-op for non-CUDA case
     }
 
-    inline bool operator==(const nixlCudaPtrCtx &lhs, 
-                           const nixlCudaPtrCtx &rhs) {
-        return lhs.type == rhs.type && internalCmp(lhs, rhs);
+    inline bool operator==(const nixlCudaPtrCtx &rhs) {
+        return (mem_type == rhs.mem_type) &&
+                internalCmp(rhs);
     }
 
 
     static bool vramIsSupported();
-    static std::unique_ptr<nixlCudaPtrCtx> *nixlCudaPtrInit(void *address);
-
+    static std::unique_ptr<nixlCudaPtrCtx> nixlCudaPtrCtxInit(void *address);
 };
 

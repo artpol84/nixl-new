@@ -28,9 +28,10 @@
 #include "common/str_tools.h"
 
 // Local includes
-#include "common/nixl_time.h"
-#include "ucx/ucx_utils.h"
-#include "common/list_elem.h"
+#include <common/nixl_time.h>
+#include <ucx/ucx_utils.h>
+#include <common/list_elem.h>
+#include <cuda/cuda_utils.h>
 
 typedef enum {CONN_CHECK, NOTIF_STR, DISCONNECT} ucx_cb_op_t;
 
@@ -106,7 +107,7 @@ class nixlUcxEngine : public nixlBackendEngine {
         nixlTime::us_t pthrDelay;
 
         /* CUDA data*/
-        std::unique_ptr<nixlPtrCtxBase> cudaPtrCtx;
+        std::unique_ptr<nixlCudaPtrCtx> cudaPtrCtx;
         //nixlUcxCudaCtx *cudaCtx;
         bool cudaAddrWA;
 
@@ -120,10 +121,9 @@ class nixlUcxEngine : public nixlBackendEngine {
                            std::hash<std::string>, strEqual> remoteConnMap;
 
 
-        void vramInitCtx();
+        nixl_status_t vramUpdateCtx(void *address, uint64_t devId, bool &restart_reqd);
+        nixl_status_t vramApplyCtx();
         void vramFiniCtx();
-        int vramUpdateCtx(void *address, uint64_t devId, bool &restart_reqd);
-        int vramApplyCtx();
 
         // Threading infrastructure
         //   TODO: move the thread management one outside of NIXL common infra
