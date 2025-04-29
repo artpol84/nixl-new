@@ -106,8 +106,9 @@ class nixlUcxEngine : public nixlBackendEngine {
         nixlTime::us_t pthrDelay;
 
         /* CUDA data*/
-        nixlUcxCudaCtx *cudaCtx;
-        bool cuda_addr_wa;
+        std::unique_ptr<nixlPtrCtxBase> cudaPtrCtx;
+        //nixlUcxCudaCtx *cudaCtx;
+        bool cudaAddrWA;
 
         /* Notifications */
         notif_list_t notifMainList;
