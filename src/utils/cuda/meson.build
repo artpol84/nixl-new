@@ -13,12 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ucx_utils_depends_from = [ ucx_dep ]
+cuda_utils_depends_from = []
 
-ucx_utils_lib = library('ucx_utils',
-           'ucx_utils.cpp', 'ucx_utils.h',
-           dependencies: ucx_utils_depends_from,
+compile_flags = [ ]
+if cuda_dep.found()
+    compile_flags += '-DHAVE_CUDA'
+    cuda_utils_depends_from = [ cuda_dep ]
+
+    func ='cuMemRetainAllocationHandle'
+    if cpp.has_function(func, dependencies: cuda_dep)
+        compile_flags += '-DHAVE_' + func.underscorify().to_upper() + '=1'
+    endif
+
+    macroName = 'CU_MEM_LOCATION_TYPE_HOST'
+    if cpp.has_define(macroName)
+        compile_flags += '-DHAVE_' + macroName + '=1'
+    endif
+endif
+
+cuda_utils_lib = library('cuda_utils',
+           'cuda_utils.cpp', 'cuda_utils.h',
+           dependencies: cuda_utils_depends_from,
+           cpp_args : compile_flags,
            include_directories: [ nixl_inc_dirs ],
            install: true)
 
-ucx_utils_dep = declare_dependency(link_with: ucx_utils_lib, include_directories: utils_inc_dirs )
+cuda_utils_dep = declare_dependency(link_with: cuda_utils_lib, include_directories: utils_inc_dirs )
