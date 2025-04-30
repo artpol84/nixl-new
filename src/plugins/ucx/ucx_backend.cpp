@@ -84,18 +84,6 @@ nixl_status_t nixlUcxEngine::vramApplyCtx()
     return NIXL_SUCCESS;
 }
 
-nixl_status_t nixlUcxEngine::vramFiniCtx()
-{
-    nixl_status_t status = NIXL_SUCCESS;
-    auto ctx = cudaPtrCtx.get();
-    if (ctx) {
-        status = ctx->unsetMemCtx();
-
-    }
-    cudaPtrCtx.reset(nullptr);
-    return status;
-}
-
 /****************************************
  * UCX request management
 *****************************************/
@@ -373,9 +361,6 @@ nixlUcxEngine::~nixlUcxEngine () {
     }
 
     progressThreadStop();
-    if (NIXL_SUCCESS != vramFiniCtx()){
-        // TODO: log error
-    }
     delete uw;
     delete uc;
     free(workerAddr);

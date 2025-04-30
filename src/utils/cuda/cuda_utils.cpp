@@ -40,6 +40,7 @@
 class nixlCudaPtrImpl : public nixlCudaPtrCtx {
 private:
     CUcontext ctx;
+    bool wasSet;
 
     nixl_status_t initVmm(void *address);
     nixl_status_t initCuda(void *address);
@@ -67,6 +68,7 @@ private:
 
     nixl_status_t checkVmm(void *address);
     nixl_status_t checkCuda(void *address);
+    nixl_status_t unsetMemCtx() override;
 
 public:
 
@@ -100,12 +102,14 @@ public:
     }
 
     ~nixlCudaPtrImpl() override {
+        if (wasSet) {
+            unsetMemCtx();
+        }
     }
 
 
 
     nixl_status_t setMemCtx() override;
-    nixl_status_t unsetMemCtx() override;
 };
 
 #endif
@@ -268,6 +272,7 @@ nixlCudaPtrImpl::setMemCtx()
             // would be more appropriate
             return NIXL_ERR_NOT_SUPPORTED;
         }
+        wasSet = true;
         return NIXL_SUCCESS;
     }
     case MEM_VMM_DEV: {
