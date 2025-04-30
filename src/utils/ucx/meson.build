@@ -22,5 +22,5 @@ ucx_utils_lib = library('ucx_utils',
            install: true)
 
 ucx_utils_interface = declare_dependency(link_with: ucx_utils_lib, 
-                                         include_directories: utils_inc_dirs,
+                                         include_directories: utils_inc_dirs ,
                                          dependencies: ucx_dep )
