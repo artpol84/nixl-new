@@ -59,7 +59,7 @@ private:
                    (ctx == rhs.ctx);
             break;
         case MEM_VMM_HOST:
-            // TODO: check what is required 
+            // TODO: check what is required
         default:
             // TODO error log
             return false;
@@ -75,7 +75,7 @@ public:
     nixlCudaPtrImpl(void *addr) : nixlCudaPtrCtx (addr)
     {
         nixl_status_t status;
-    
+
         // Test VMM allocations first
         status = checkVmm(address);
         if (status == NIXL_SUCCESS) {
@@ -174,7 +174,7 @@ nixlCudaPtrImpl::checkVmm(void *address)
     if (result != CUDA_SUCCESS) {
         return NIXL_ERR_NOT_FOUND;
     }
-    // TODO: set the call to cuMemRelease when leaving the scope to avoid GOTO 
+    // TODO: set the call to cuMemRelease when leaving the scope to avoid GOTO
 
     result = cuMemGetAllocationPropertiesFromHandle(&prop, alloc_handle);
     if (result != CUDA_SUCCESS) {
@@ -279,19 +279,19 @@ nixlCudaPtrImpl::setMemCtx()
 #if 0
         unsigned int flags;
         int active;
-    
+
         result = cuDevicePrimaryCtxGetState(devId, &flags, &active);
         if (result != CUDA_SUCCESS) {
             // TODO: log error
             return NIXL_ERR_UNKNOWN;
         }
-    
+
         if (!active) {
             // TODO: Not supported at the moment. In most cases it is set
             // FIXME: Allocate a new context?
             return NIXL_ERR_INVALID_PARAM;
         }
-    
+
         result = cuDevicePrimaryCtxRetain(&ctx, devId);
         if (result != CUDA_SUCCESS) {
             // TODO: log error
@@ -336,4 +336,3 @@ nixlCudaPtrImpl::unsetMemCtx()
 }
 
 #endif
-

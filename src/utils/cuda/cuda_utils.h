@@ -83,4 +83,3 @@ public:
     static bool vramIsSupported();
     static std::unique_ptr<nixlCudaPtrCtx> nixlCudaPtrCtxInit(void *address);
 };
-

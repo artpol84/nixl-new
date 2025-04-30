@@ -32,8 +32,8 @@ nixlUcxEngine::vramUpdateCtx(void *address, uint64_t  devId, bool &restart_reqd)
         // Nothing to do
         return NIXL_SUCCESS;
     }
-    
-    std::unique_ptr<nixlCudaPtrCtx> ctx = 
+
+    std::unique_ptr<nixlCudaPtrCtx> ctx =
             nixlCudaPtrCtx::nixlCudaPtrCtxInit(address);
 
     switch(ctx->getMemType()) {
@@ -67,7 +67,7 @@ nixlUcxEngine::vramUpdateCtx(void *address, uint64_t  devId, bool &restart_reqd)
     // The context was set previously
     // Check that it is consistent with the new address
     if (! (*ctx == *cudaPtrCtx)) {
-        // TODO: log out error that for UCX that requires CUDA context to be set 
+        // TODO: log out error that for UCX that requires CUDA context to be set
         // addresses from different contexts are used
         return NIXL_ERR_NOT_SUPPORTED;
     }
@@ -582,7 +582,7 @@ nixl_status_t nixlUcxEngine::registerMem (const nixlBlobDesc &mem,
     if (nixl_mem == VRAM_SEG) {
         bool need_restart;
         nixl_status_t status;
-        status = vramUpdateCtx((void*)mem.addr, mem.devId, need_restart);        
+        status = vramUpdateCtx((void*)mem.addr, mem.devId, need_restart);
         if (NIXL_SUCCESS != status) {
             //TODO Add to logging
             return status;

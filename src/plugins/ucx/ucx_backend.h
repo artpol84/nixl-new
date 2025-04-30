@@ -123,7 +123,7 @@ class nixlUcxEngine : public nixlBackendEngine {
 
         nixl_status_t vramUpdateCtx(void *address, uint64_t devId, bool &restart_reqd);
         nixl_status_t vramApplyCtx();
-  
+
         // Threading infrastructure
         //   TODO: move the thread management one outside of NIXL common infra
         void progressFunc();
