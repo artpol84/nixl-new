@@ -38,4 +38,6 @@ cuda_utils_lib = library('cuda_utils',
            include_directories: [ nixl_inc_dirs ],
            install: true)
 
-cuda_utils_dep = declare_dependency(link_with: cuda_utils_lib, include_directories: utils_inc_dirs )
+cuda_utils_dep = declare_dependency(link_with: cuda_utils_lib, 
+                                    include_directories: utils_inc_dirs,
+                                    dependencies: cuda_dep )
