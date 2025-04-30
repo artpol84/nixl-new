@@ -150,7 +150,7 @@ nixlCudaPtrCtx::nixlCudaPtrCtxInit(void *address)
 
 
 /****************************************
- * CUDA nixlCudaPtr class implementaton
+ * CUDA nixlCudaPtr class implementation
 *****************************************/
 
 #ifdef HAVE_CUDA
