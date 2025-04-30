@@ -45,4 +45,5 @@ else
 endif
 
 ucx_backend_interface = declare_dependency(link_with: ucx_backend_lib,
+                                           include_directories: include_directories('src/plugins/ucx'),
                                            dependencies: ucx_backend_dep_list)
