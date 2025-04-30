@@ -156,6 +156,9 @@ nixlCudaPtrImpl::checkVmm(void *address)
 {
     nixl_status_t ret = NIXL_SUCCESS;
 
+    // TODO: Test VMM and enable the code path
+    return NIXL_ERR_NOT_SUPPORTED;
+#if 0
 #if HAVE_CUMEMRETAINALLOCATIONHANDLE
     CUmemAllocationProp prop = {};
     CUmemGenericAllocationHandle alloc_handle;
@@ -203,6 +206,7 @@ err:
             ret = NIXL_ERR_UNKNOWN;
         }
     }
+#endif
 #endif
     return ret;
 }
@@ -267,6 +271,7 @@ nixlCudaPtrImpl::setMemCtx()
         return NIXL_SUCCESS;
     }
     case MEM_VMM_DEV: {
+#if 0
         unsigned int flags;
         int active;
     
@@ -288,6 +293,8 @@ nixlCudaPtrImpl::setMemCtx()
             return NIXL_ERR_UNKNOWN;
         }
         return NIXL_SUCCESS;
+#endif
+        // Fall thru
     }
     case MEM_VMM_HOST:
         // TODO: Not supported at the moment
@@ -305,6 +312,7 @@ nixlCudaPtrImpl::unsetMemCtx()
     case MEM_DEV:
         return NIXL_SUCCESS;
     case MEM_VMM_DEV: {
+#if 0
         CUresult result;
         result = cuDevicePrimaryCtxRelease(devId);
         if (result != CUDA_SUCCESS) {
@@ -312,6 +320,7 @@ nixlCudaPtrImpl::unsetMemCtx()
             return NIXL_ERR_UNKNOWN;
         }
         return NIXL_SUCCESS;
+#endif
     }
     case MEM_VMM_HOST:
         // TODO: Not supported at the moment
