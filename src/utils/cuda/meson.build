@@ -29,6 +29,8 @@ if cuda_dep.found()
     if cpp.has_define(macroName)
         compile_flags += '-DHAVE_' + macroName + '=1'
     endif
+else
+    compile_flags += '-UHAVE_CUDA'
 endif
 
 cuda_utils_lib = library('cuda_utils',
@@ -38,6 +40,6 @@ cuda_utils_lib = library('cuda_utils',
            include_directories: [ nixl_inc_dirs ],
            install: true)
 
-cuda_utils_dep = declare_dependency(link_with: cuda_utils_lib,
-                                    include_directories: utils_inc_dirs,
-                                    dependencies: cuda_dep )
+cuda_utils_interface = declare_dependency(link_with: cuda_utils_lib,
+                                          include_directories: utils_inc_dirs,
+                                          dependencies: cuda_dep )

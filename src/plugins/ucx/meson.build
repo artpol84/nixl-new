@@ -16,10 +16,12 @@
 
 compile_flags = []
 
+ucx_backend_dep_list = [nixl_infra, ucx_utils_interface, cuda_utils_interface, serdes_interface, thread_dep]
+
 if 'UCX' in static_plugins
     ucx_backend_lib = static_library('UCX',
                'ucx_backend.cpp', 'ucx_backend.h', 'ucx_plugin.cpp',
-               dependencies: [nixl_infra, ucx_utils_dep, cuda_utils_dep, serdes_interface, thread_dep],
+               dependencies: ucx_backend_dep_list,
                include_directories: nixl_inc_dirs,
                install: false,
                cpp_args : compile_flags,
@@ -27,7 +29,7 @@ if 'UCX' in static_plugins
 else
     ucx_backend_lib = shared_library('UCX',
                'ucx_backend.cpp', 'ucx_backend.h', 'ucx_plugin.cpp',
-               dependencies: [nixl_infra, ucx_utils_dep, cuda_utils_dep, serdes_interface, thread_dep],
+               dependencies: ucx_backend_dep_list,
                include_directories: [nixl_inc_dirs, utils_inc_dirs],
                install: true,
                cpp_args : compile_flags + ['-fPIC'],
@@ -42,4 +44,5 @@ else
     endif
 endif
 
-ucx_backend_interface = declare_dependency(link_with: ucx_backend_lib)
+ucx_backend_interface = declare_dependency(link_with: ucx_backend_lib,
+                                           dependencies: ucx_backend_dep_list)
