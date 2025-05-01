@@ -157,7 +157,7 @@ int main()
 
     if (!ngpus) {
         cout << "No GPGPU devices detected, nothing to test!" << endl;
-        return 0;       
+        return 0;
     }
 
     /* Test regular CUDA malloc */
@@ -188,5 +188,5 @@ if HAVE_CUDA_VMM
         releaseVMM(0, len, address);
     }
 #endif
-    
+
 }
