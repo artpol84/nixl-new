@@ -151,7 +151,7 @@ int main()
     void *address;
     size_t len = 1024;
 
-    /* Discover environemnt */
+    /* Discover environment */
     int ngpus;
     cudaGetDeviceCount(&ngpus);
 
@@ -171,7 +171,7 @@ int main()
 
     /* Test regular CUDA malloc */
     {
-        assert(0 == allocateCUDA(0, len, addres));
+        assert(0 == allocateCUDA(0, len, address));
         std::unique_ptr<nixlCudaPtrCtx> ctx =
                 nixlCudaPtrCtx::nixlCudaPtrCtxInit(address);
         assert(ctx->getMemType == nixlCudaPtrCtx::MEM_DEV);
@@ -181,7 +181,7 @@ int main()
 if HAVE_CUDA_VMM
     /* Test regular CUDA malloc */
     {
-        assert(0 == allocateVMM(0, len, addres));
+        assert(0 == allocateVMM(0, len, address));
         std::unique_ptr<nixlCudaPtrCtx> ctx =
                 nixlCudaPtrCtx::nixlCudaPtrCtxInit(address);
         assert(ctx->getMemType == nixlCudaPtrCtx::MEM_VMM_DEV);1
