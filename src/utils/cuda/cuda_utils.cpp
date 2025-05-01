@@ -94,11 +94,14 @@ public:
         if (status == NIXL_SUCCESS) {
             // Everything is initialized
             return;
-        } else {
+        }
+        if (status != NIXL_ERR_NOT_FOUND) {
             // Unexpected error
             // TODO: throw status;
             mem_type = MEM_INVALID;
         }
+
+        mem_type = MEM_HOST;
     }
 
     ~nixlCudaPtrImpl() override {
@@ -160,9 +163,6 @@ nixlCudaPtrImpl::checkVmm(void *address)
 {
     nixl_status_t ret = NIXL_SUCCESS;
 
-    // TODO: Test VMM and enable the code path
-    return NIXL_ERR_NOT_SUPPORTED;
-#if 0
 #if HAVE_CUMEMRETAINALLOCATIONHANDLE
     CUmemAllocationProp prop = {};
     CUmemGenericAllocationHandle alloc_handle;
@@ -211,7 +211,6 @@ err:
         }
     }
 #endif
-#endif
     return ret;
 }
 
@@ -237,7 +236,7 @@ nixlCudaPtrImpl::checkCuda(void *address)
 
     result = cuPointerGetAttributes(4, attr_type, attr_data, (CUdeviceptr)address);
     if (CUDA_SUCCESS != result) {
-        return NIXL_ERR_INVALID_PARAM;
+        return NIXL_ERR_NOT_FOUND;
     }
 
     switch(cuda_mem_type) {
@@ -248,8 +247,9 @@ nixlCudaPtrImpl::checkCuda(void *address)
         mem_type = MEM_HOST;
     case CU_MEMORYTYPE_ARRAY:
         // TODO: how should this case be processed?
-    default:
         return NIXL_ERR_INVALID_PARAM;
+    default:
+        return NIXL_ERR_NOT_FOUND;
     }
 
     // TODO: what to do if the memory "is_managed"?

@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 #include <iostream>
+#include <cassert>
 
 #include <cuda_runtime.h>
 #include <cuda.h>
@@ -23,15 +24,27 @@
 
 using namespace std;
 
-static void checkCudaError(cudaError_t result, const char *message) {
-    if (result != cudaSuccess) {
-        std::cerr << message << " (Error code: " << result << " - "
-                   << cudaGetErrorString(result) << ")" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-}
+#define CHECK_CUDA_ERROR(result, message)                                           \
+    do {                                                                            \
+        if (result != cudaSuccess) {                                                \
+            std::cerr << "CUDA: " << message << " (Error code: " << result          \
+                      << " - " << cudaGetErrorString(result) << ")" << std::endl;   \
+            exit(EXIT_FAILURE);                                                     \
+        }                                                                           \
+    } while(0)
 
-static int cudaQueryAddr(void *address, bool &is_dev,
+#define CHECK_CUDA_DRIVER_ERROR(result, message)                                    \
+    do {                                                                            \
+        if (result != CUDA_SUCCESS) {                                               \
+            const char *error_str;                                                  \
+            cuGetErrorString(result, &error_str);                                   \
+            std::cerr << "CUDA Driver: " << message << " (Error code: "             \
+                      << result << " - " << error_str << ")" << std::endl;          \
+            exit(EXIT_FAILURE);                                                     \
+        }                                                                           \
+    } while(0)
+
+void cudaQueryAddr(void *address, bool &is_dev,
                          CUdevice &dev, CUcontext &ctx)
 {
     CUmemorytype mem_type = CU_MEMORYTYPE_HOST;
@@ -39,7 +52,6 @@ static int cudaQueryAddr(void *address, bool &is_dev,
 #define NUM_ATTRS 4
     CUpointer_attribute attr_type[NUM_ATTRS];
     void *attr_data[NUM_ATTRS];
-    CUresult result;
 
     attr_type[0] = CU_POINTER_ATTRIBUTE_MEMORY_TYPE;
     attr_data[0] = &mem_type;
@@ -51,32 +63,28 @@ static int cudaQueryAddr(void *address, bool &is_dev,
     attr_type[3] = CU_POINTER_ATTRIBUTE_CONTEXT;
     attr_data[3] = &ctx;
 
-    result = cuPointerGetAttributes(4, attr_type, attr_data, (CUdeviceptr)address);
+    CHECK_CUDA_DRIVER_ERROR(cuPointerGetAttributes(4, attr_type, attr_data, (CUdeviceptr)address),
+                            "Failed to cuPointerGetAttributes");
 
     is_dev = (mem_type == CU_MEMORYTYPE_DEVICE);
-
-    return (CUDA_SUCCESS != result);
 }
 
-#endif
-
-static int allocateCUDA(int dev_id, size_t len, void* &addr)
+void allocateCUDA(int dev_id, size_t len, void* &addr)
 {
     bool is_dev;
     CUdevice dev;
     CUcontext ctx;
 
-    checkCudaError(cudaMalloc(&addr, len), "Failed to allocate CUDA buffer 0");
+    CHECK_CUDA_ERROR(cudaMalloc(&addr, len), "Failed to allocate CUDA buffer 0");
     cudaQueryAddr(addr, is_dev, dev, ctx);
     std::cout << "CUDA addr: " << std::hex << addr << " dev=" << std::dec << dev
         << " ctx=" << std::hex << ctx << std::dec << std::endl;
-    return 0;
 }
 
 void releaseCUDA(int dev_id, void* addr)
 {
-    checkCudaError(cudaSetDevice(dev_id), "Failed to set device");
-    checkCudaError(cudaFree(addr), "Failed to allocate CUDA buffer 0");
+    CHECK_CUDA_ERROR(cudaSetDevice(dev_id), "Failed to set device");
+    CHECK_CUDA_ERROR(cudaFree(addr), "Failed to allocate CUDA buffer 0");
 }
 
 #ifdef HAVE_CUDA_VMM
@@ -85,14 +93,13 @@ void releaseCUDA(int dev_id, void* addr)
 static size_t __attribute__((unused)) padded_size = 0;
 static CUmemGenericAllocationHandle __attribute__((unused)) handle;
 
-static int allocateVMM(int dev_id, size_t len, void* &addr, )
+void allocateVMM(int dev_id, size_t len, void* &_addr)
 {
     CUdeviceptr addr = 0;
     size_t granularity = 0;
     CUmemAllocationProp prop = {};
-    CUmemAccessDesc access = {};
 
-    checkCudaError(cudaSetDevice(dev_id), "Failed to set device");
+    CHECK_CUDA_ERROR(cudaSetDevice(dev_id), "Failed to set device");
 
     prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
     // prop.requestedHandleTypes = CU_MEM_HANDLE_TYPE_FABRIC;
@@ -102,45 +109,48 @@ static int allocateVMM(int dev_id, size_t len, void* &addr, )
     // prop.location.type = CU_MEM_LOCATION_TYPE_HOST_NUMA;
 
     // Get the allocation granularity
-    checkCudaError(cuMemGetAllocationGranularity(&granularity, prop,
-                                                 CU_MEM_ALLOC_GRANULARITY_MINIMUM),
-                    "Failed to get allocation granularity");
+    CHECK_CUDA_DRIVER_ERROR(cuMemGetAllocationGranularity(&granularity, &prop,
+                                                          CU_MEM_ALLOC_GRANULARITY_MINIMUM),
+                            "Failed to get allocation granularity");
     std::cout << "Granularity: " << granularity << std::endl;
 
     padded_size = ROUND_UP(len, granularity);
-    checkCudaError(cuMemCreate(&handle, padded_size, &prop, 0),
-                         "Failed to create allocation");
+    CHECK_CUDA_DRIVER_ERROR(cuMemCreate(&handle, padded_size, &prop, 0),
+                            "Failed to create allocation");
 
     // Reserve the memory address
-    checkCudaError(cuMemAddressReserve(&addr, padded_size,
-                                        granularity, 0, 0),
-                   "Failed to reserve address");
+    CHECK_CUDA_DRIVER_ERROR(cuMemAddressReserve(&addr, padded_size,
+                                                granularity, 0, 0),
+                            "Failed to reserve address");
 
     // Map the memory
-    checkCudaError(cuMemMap(addr, padded_size, 0, handle, 0),
-                   "Failed to map memory");
+    CHECK_CUDA_DRIVER_ERROR(cuMemMap(addr, padded_size, 0, handle, 0),
+                            "Failed to map memory");
 
     std::cout << "Address: " << std::hex << std::showbase << addr
-              << " Buffer size: " << std::dec << buffer_size
+              << " Buffer size: " << std::dec << len
               << " Padded size: " << std::dec << padded_size << std::endl;
 
-    // Set the memory access rights
-    access.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
-    access.location.id = dev_id;
-    access.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
-    checkCudaError(cuMemSetAccess(addr, buffer_size, &access, 1),
-                   "Failed to set access");
+    // // Set the memory access rights
+    // CUmemAccessDesc access = {};
+    // access.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+    // access.location.id = dev_id;
+    // access.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+    // CHECK_CUDA_DRIVER_ERROR(cuMemSetAccess(addr, len, &access, 1),
+    //                         "Failed to set access");
+
+    _addr = (void*)addr;
 }
 
 void releaseVMM(int dev_id, size_t len, void* addr)
 {
-    checkCudaError(cudaSetDevice(dev_id), "Failed to set device");
-    checkCudaError(cuMemUnmap(addr, len),
-                  "Failed to unmap memory");
-    checkCudaError(cuMemRelease(handle),
-                   "Failed to release memory");
-    checkCudaError(cuMemAddressFree(addr, padded_size),
-                   "Failed to free reserved address");
+    CHECK_CUDA_ERROR(cudaSetDevice(dev_id), "Failed to set device");
+    CHECK_CUDA_DRIVER_ERROR(cuMemUnmap((CUdeviceptr)addr, padded_size),
+                            "Failed to unmap memory");
+    CHECK_CUDA_DRIVER_ERROR(cuMemRelease(handle),
+                            "Failed to release memory");
+    CHECK_CUDA_DRIVER_ERROR(cuMemAddressFree((CUdeviceptr)addr, padded_size),
+                            "Failed to free reserved address");
 }
 
 #endif
@@ -162,30 +172,48 @@ int main()
 
     /* Test regular CUDA malloc */
     {
+        cout << endl << "*************************" << endl;
+        cout << "      Test malloc'd memory" << endl;
+
         address = malloc(len);
+        assert(address);
         std::unique_ptr<nixlCudaPtrCtx> ctx =
                 nixlCudaPtrCtx::nixlCudaPtrCtxInit(address);
-        assert(ctx->getMemType == nixlCudaPtrCtx::MEM_HOST);
+        assert(ctx->getMemType() == nixlCudaPtrCtx::MEM_HOST);
+        cout << " >>>> PASSED! <<<<<<<" << endl;
         free(address);
+        cout << "*************************" << endl;
     }
 
     /* Test regular CUDA malloc */
     {
-        assert(0 == allocateCUDA(0, len, address));
+        cout << endl << "*************************" << endl;
+        cout << "      Test CUDA malloc'd memory" << endl;
+
+
+        allocateCUDA(0, len, address);
         std::unique_ptr<nixlCudaPtrCtx> ctx =
                 nixlCudaPtrCtx::nixlCudaPtrCtxInit(address);
-        assert(ctx->getMemType == nixlCudaPtrCtx::MEM_DEV);
-        assert(0 == releaseCUDA(0, address));
+        assert(ctx->getMemType() == nixlCudaPtrCtx::MEM_DEV);
+        cout << " >>>> PASSED! <<<<<<<" << endl;
+        releaseCUDA(0, address);
+        cout << "*************************" << endl;
     }
 
-if HAVE_CUDA_VMM
+#ifdef HAVE_CUDA_VMM
     /* Test regular CUDA malloc */
     {
-        assert(0 == allocateVMM(0, len, address));
+
+        cout << endl << "*************************" << endl;
+        cout << "      Test VMM mapped memory" << endl;
+
+        allocateVMM(0, len, address);
         std::unique_ptr<nixlCudaPtrCtx> ctx =
                 nixlCudaPtrCtx::nixlCudaPtrCtxInit(address);
-        assert(ctx->getMemType == nixlCudaPtrCtx::MEM_VMM_DEV);1
+        assert(ctx->getMemType() == nixlCudaPtrCtx::MEM_VMM_DEV);
+        cout << " >>>> PASSED! <<<<<<<" << endl;
         releaseVMM(0, len, address);
+        cout << "*************************" << endl;
     }
 #endif
 
