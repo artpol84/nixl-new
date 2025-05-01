@@ -13,14 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ucx_utils_depends_from = [ ucx_dep ]
-
 ucx_utils_lib = library('ucx_utils',
            'ucx_utils.cpp', 'ucx_utils.h',
-           dependencies: ucx_utils_depends_from,
+           dependencies: ucx_dep,
            include_directories: [ nixl_inc_dirs ],
            install: true)
 
 ucx_utils_interface = declare_dependency(link_with: ucx_utils_lib, 
-                                         include_directories: utils_inc_dirs ,
+                                         include_directories: utils_inc_dirs,
                                          dependencies: ucx_dep )

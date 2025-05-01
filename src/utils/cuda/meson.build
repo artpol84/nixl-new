@@ -34,12 +34,12 @@ else
 endif
 
 cuda_utils_lib = library('cuda_utils',
-           'cuda_utils.cpp', 'cuda_utils.h',
-           dependencies: cuda_utils_depends_from,
-           cpp_args : compile_flags,
-           include_directories: [ nixl_inc_dirs ],
-           install: true)
+                         'cuda_utils.cpp', 'cuda_utils.h',
+                         dependencies: cuda_utils_depends_from,
+                         cpp_args : compile_flags,
+                         include_directories: [ nixl_inc_dirs ],
+                         install: true)
 
 cuda_utils_interface = declare_dependency(link_with: cuda_utils_lib,
                                           include_directories: utils_inc_dirs,
-                                          dependencies: cuda_dep )
+                                          dependencies: cuda_utils_depends_from )
