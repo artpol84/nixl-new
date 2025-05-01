@@ -3,9 +3,9 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
 
-#include "cuda/cuda_utils.h"
+#include <cuda/cuda_utils.h>
 
-int gpu_id = 0;
+using namespace std;
 
 static void checkCudaError(cudaError_t result, const char *message) {
     if (result != cudaSuccess) {
@@ -44,7 +44,7 @@ static int cudaQueryAddr(void *address, bool &is_dev,
 
 #endif
 
-static int allocateCUDAMalloc(int dev_id, size_t len, void* &addr)
+static int allocateCUDA(int dev_id, size_t len, void* &addr)
 {
     bool is_dev;
     CUdevice dev;
@@ -57,16 +57,26 @@ static int allocateCUDAMalloc(int dev_id, size_t len, void* &addr)
     return 0;
 }
 
+void releaseCUDA(int dev_id, void* addr)
+{
+    checkCudaError(cudaSetDevice(dev_id), "Failed to set device");
+    checkCudaError(cudaFree(addr), "Failed to allocate CUDA buffer 0");
+}
+
 #ifdef HAVE_CUDA_VMM
 
 #define ROUND_UP(value, granularity) ((((value) + (granularity) - 1) / (granularity)) * (granularity))
+static size_t __attribute__((unused)) padded_size = 0;
+static CUmemGenericAllocationHandle __attribute__((unused)) handle;
 
-static int allocateVMM(int dev_id, size_t len, void* &addr)
+static int allocateVMM(int dev_id, size_t len, void* &addr, )
 {
     CUdeviceptr addr = 0;
     size_t granularity = 0;
     CUmemAllocationProp prop = {};
     CUmemAccessDesc access = {};
+
+    checkCudaError(cudaSetDevice(dev_id), "Failed to set device");
 
     prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
     // prop.requestedHandleTypes = CU_MEM_HANDLE_TYPE_FABRIC;
@@ -103,15 +113,64 @@ static int allocateVMM(int dev_id, size_t len, void* &addr)
     access.location.id = dev_id;
     access.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
     checkCudaError(cuMemSetAccess(addr, buffer_size, &access, 1),
-        "Failed to set access");
-
-    // Set memory content based on role
-    if (isInit) {
-        checkCudaError(cuMemsetD8(addr, XFERBENCH_INITIATOR_BUFFER_ELEMENT, buffer_size),
-            "Failed to set device memory to XFERBENCH_INITIATOR_BUFFER_ELEMENT");
-    } else {
-        checkCudaError(cuMemsetD8(addr, XFERBENCH_TARGET_BUFFER_ELEMENT, buffer_size),
-            "Failed to set device memory to XFERBENCH_TARGET_BUFFER_ELEMENT");
-    }
+                   "Failed to set access");
 }
-+#endif
+
+void releaseVMM(int dev_id, size_t len, void* addr)
+{
+    checkCudaError(cudaSetDevice(dev_id), "Failed to set device");
+    checkCudaError(cuMemUnmap(addr, len),
+                  "Failed to unmap memory");
+    checkCudaError(cuMemRelease(handle),
+                   "Failed to release memory");
+    checkCudaError(cuMemAddressFree(addr, padded_size),
+                   "Failed to free reserved address");
+}
+
+#endif
+
+
+int main()
+{
+    void *address;
+    size_t len = 1024;
+
+    /* Discover environemnt */
+    int ngpus;
+    cudaGetDeviceCount(&ngpus);
+
+    if (!ngpus) {
+        cout << "No GPGPU devices detected, nothing to test!" << endl;
+        return 0;       
+    }
+
+    /* Test regular CUDA malloc */
+    {
+        address = malloc(len);
+        std::unique_ptr<nixlCudaPtrCtx> ctx =
+                nixlCudaPtrCtx::nixlCudaPtrCtxInit(address);
+        assert(ctx->getMemType == nixlCudaPtrCtx::MEM_HOST);
+        free(address);
+    }
+
+    /* Test regular CUDA malloc */
+    {
+        assert(0 == allocateCUDA(0, len, addres));
+        std::unique_ptr<nixlCudaPtrCtx> ctx =
+                nixlCudaPtrCtx::nixlCudaPtrCtxInit(address);
+        assert(ctx->getMemType == nixlCudaPtrCtx::MEM_DEV);
+        assert(0 == releaseCUDA(0, address));
+    }
+
+if HAVE_CUDA_VMM
+    /* Test regular CUDA malloc */
+    {
+        assert(0 == allocateVMM(0, len, addres));
+        std::unique_ptr<nixlCudaPtrCtx> ctx =
+                nixlCudaPtrCtx::nixlCudaPtrCtxInit(address);
+        assert(ctx->getMemType == nixlCudaPtrCtx::MEM_VMM_DEV);1
+        releaseVMM(0, len, address);
+    }
+#endif
+    
+}

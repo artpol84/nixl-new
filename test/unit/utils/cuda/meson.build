@@ -13,12 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ucx_utils_dep = [ ucx_dep ]
-if cuda_dep.found()
-    ucx_utils_dep += [ cuda_dep ]
-endif
-
-
 # Check if VMM is supported
 func ='cuMemCreate'
 if cpp.has_function(func, dependencies: cuda_dep)
@@ -31,7 +25,7 @@ if get_option('buildtype') != 'release'
         cuda_ptr_bin = executable('cuda_ptr_test',
                                   'cuda_ptr_test.cpp',
                                   dependencies: [ cuda_utils_interface ],
-                                  include_directories: [nixl_inc_dirs, utils_inc_dirs],
+                                  include_directories: [nixl_inc_dirs],
                                   link_with: cuda_utils_lib,
                                   cpp_args: compile_flags,
                                   install: true)
