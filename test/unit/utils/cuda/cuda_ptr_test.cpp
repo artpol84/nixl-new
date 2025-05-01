@@ -113,7 +113,7 @@ static int allocateVMM(int dev_id, size_t len, void* &addr, )
 
     // Reserve the memory address
     checkCudaError(cuMemAddressReserve(&addr, padded_size,
-                                        granularity, 0, 0), 
+                                        granularity, 0, 0),
                    "Failed to reserve address");
 
     // Map the memory
