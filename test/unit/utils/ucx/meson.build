@@ -32,7 +32,7 @@ if get_option('buildtype') != 'release'
     if cuda_dep.found()
         ucx_worker_cuda_bin = executable('ucx_worker_test_cuda',
                        'ucx_worker_test.cpp',
-                       dependencies: ucx_utils_interface,
+                       dependencies: [ ucx_utils_interface, cuda_dep ],
                        include_directories: [nixl_inc_dirs],
                        cpp_args : '-DUSE_VRAM',
                        link_with: ucx_utils_lib,
@@ -41,7 +41,7 @@ if get_option('buildtype') != 'release'
         ucx_am_cuda_bin = executable('ucx_am_test_cuda',
                        'ucx_am_test.cpp',
                        dependencies: ucx_utils_interface,
-                       include_directories: [nixl_inc_dirs],
+                       include_directories: [ ucx_utils_interface, cuda_dep ],
                        cpp_args : '-DUSE_VRAM',
                        link_with: ucx_utils_lib,
                        install: true)
