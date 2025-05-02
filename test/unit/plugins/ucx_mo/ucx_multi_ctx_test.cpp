@@ -73,7 +73,7 @@ std::string memType2Str(nixl_mem_t mem_type)
 
 nixlBackendEngine *createEngine(std::string name, uint32_t ndev, bool p_thread)
 {
-    nixlBackendEngine     *ucx_mo;
+    nixlBackendEngine     *backend;
     nixlBackendInitParams init;
     nixl_b_params_t       custom_params;
 
@@ -86,20 +86,26 @@ nixlBackendEngine *createEngine(std::string name, uint32_t ndev, bool p_thread)
 #if BUILD_UCX_MO_BACKEND
     custom_params["num_ucx_engines"] = std::to_string(ndev);
     init.type         = "UCX_MO";
+    backend = (nixlBackendEngine*) new nixlUcxMoEngine (&init);
+    assert(!backend->getInitErr());
+    if (backend->getInitErr()) {
+        std::cout << "Failed to initialize worker1" << std::endl;
+        exit(1);
+    }
 #elif BUILD_UCX_BACKEND
-    init.type         = "UCX_MO";
+    init.type         = "UCX";
+    backend = (nixlBackendEngine*) new nixlUcxEngine (&init);
+    assert(!backend->getInitErr());
+    if (backend->getInitErr()) {
+        std::cout << "Failed to initialize worker1" << std::endl;
+        exit(1);
+    }
 #else
 #error "Require either BUILD_UCX_MO_BACKEND or BUILD_UCX_BACKEND backend to be specified"
 #endif
 
-    ucx_mo = (nixlBackendEngine*) new nixlUcxMoEngine (&init);
-    assert(!ucx_mo->getInitErr());
-    if (ucx_mo->getInitErr()) {
-        std::cout << "Failed to initialize worker1" << std::endl;
-        exit(1);
-    }
 
-    return ucx_mo;
+    return backend;
 }
 
 void releaseEngine(nixlBackendEngine *ucx)

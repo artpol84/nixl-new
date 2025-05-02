@@ -44,9 +44,9 @@ bool nixlUcxContext::mtLevelIsSupported(nixl_ucx_mt_t mt_type)
 }
 
 
-static unsigned __multiGpuVer[] = {1, 19, 0}
 bool nixlUcxContext::multiGpuCtxSupported()
 {
+    static unsigned multiGpuVer[] = {1, 19, 0};
     unsigned ver[3]; 
     ucp_get_version(&ver[0], &ver[1], &ver[2]);
 

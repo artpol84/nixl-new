@@ -339,10 +339,10 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams* init_params)
     bool forcedWA = false;
     if (getenv("NIXL_CUDA_ADDR_WA")) {
         std::string force(getenv("NIXL_CUDA_ADDR_WA"));
-        if (force == std::string("on") {
+        if (force == std::string("on")) {
             cudaAddrWA = true;
             forcedWA = true;
-        } else (force == std::string("off") {
+        } else if (force == std::string("off")) {
             cudaAddrWA = false;
             forcedWA = true;
         }
