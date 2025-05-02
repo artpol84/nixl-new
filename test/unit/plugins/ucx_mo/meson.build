@@ -24,9 +24,16 @@ else
     cpp_args = '-UHAVE_CUDA'
 endif
 
-ucx_backend_test = executable('ucx_mo_backend_test',
-        'ucx_mo_backend_test.cpp',
+ucx_backend_test = executable('ucx_multi_ctx_test_UCX',
+        'ucx_multi_ctx_test.cpp',
         dependencies: [nixl_dep, nixl_infra, ucx_backend_dep, ucx_mo_backend_dep, ucx_dep] + cuda_dependencies,
         include_directories: [nixl_inc_dirs, utils_inc_dirs],
-        cpp_args : cpp_args,
+        cpp_args : cpp_args + '-DBUILD_UCX_BACKEND=1',
+        install: true)
+
+ucx_mo_backend_test = executable('ucx_multi_ctx_test_UCX_MO',
+        'ucx_multi_ctx_test.cpp',
+        dependencies: [nixl_dep, nixl_infra, ucx_backend_dep, ucx_mo_backend_dep, ucx_dep] + cuda_dependencies,
+        include_directories: [nixl_inc_dirs, utils_inc_dirs],
+        cpp_args : cpp_args +  + '-DBUILD_UCX_MO_BACKEND=1',
         install: true)

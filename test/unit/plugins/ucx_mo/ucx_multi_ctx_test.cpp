@@ -77,12 +77,20 @@ nixlBackendEngine *createEngine(std::string name, uint32_t ndev, bool p_thread)
     nixlBackendInitParams init;
     nixl_b_params_t       custom_params;
 
-    custom_params["num_ucx_engines"] = std::to_string(ndev);
+
     init.enableProgTh = p_thread;
     init.pthrDelay    = 100;
     init.localAgent   = name;
     init.customParams = &custom_params;
+    
+#if BUILD_UCX_MO_BACKEND
+    custom_params["num_ucx_engines"] = std::to_string(ndev);
     init.type         = "UCX_MO";
+#elif BUILD_UCX_BACKEND
+    init.type         = "UCX_MO";
+#else
+#error "Require either BUILD_UCX_MO_BACKEND or BUILD_UCX_BACKEND backend to be specified"
+#endif
 
     ucx_mo = (nixlBackendEngine*) new nixlUcxMoEngine (&init);
     assert(!ucx_mo->getInitErr());
