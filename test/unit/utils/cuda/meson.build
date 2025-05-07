@@ -24,7 +24,7 @@ if get_option('buildtype') != 'release'
     if cuda_dep.found()
         cuda_ptr_bin = executable('cuda_ptr_test',
                                   'cuda_ptr_test.cpp',
-                                  dependencies: [ cuda_utils_interface, nixl_infra ],
+                                  dependencies: [ cuda_utils_interface, nixl_common_dep ],
                                   include_directories: [nixl_inc_dirs],
                                   link_with: cuda_utils_lib,
                                   cpp_args: compile_flags,
