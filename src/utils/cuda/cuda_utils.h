@@ -51,9 +51,9 @@ protected:
                                  devId(0)
     { /* Empty body */ }
 
-    virtual ~nixlCudaPtrCtx() = default;
-
 public:
+
+    virtual ~nixlCudaPtrCtx() = default;
 
     memory_t getMemType() {
         return mem_type;
