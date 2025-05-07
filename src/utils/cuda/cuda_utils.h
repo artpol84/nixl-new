@@ -46,12 +46,11 @@ protected:
         return true;
     }
 
+public:
     nixlCudaPtrCtx(void *addr) : address(addr),
                                  mem_type(MEM_HOST),
                                  devId(0)
     { /* Empty body */ }
-
-public:
 
     virtual ~nixlCudaPtrCtx() = default;
 
