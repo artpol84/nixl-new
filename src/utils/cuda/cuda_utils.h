@@ -26,14 +26,14 @@
 
 class nixlCudaPtrCtx {
 public:
-    typedef enum {
+    enum memory_t {
         MEM_NONE,
         MEM_HOST,
         MEM_DEV,
         MEM_VMM_HOST,
         MEM_VMM_DEV,
         MEM_INVALID,
-    } memory_t;
+    } ;
 
 protected:
     void *address;
@@ -46,9 +46,6 @@ protected:
         return true;
     }
 
-public:
-
-
     nixlCudaPtrCtx(void *addr) : address(addr),
                                  mem_type(MEM_HOST),
                                  devId(0)
@@ -56,11 +53,13 @@ public:
 
     virtual ~nixlCudaPtrCtx() = default;
 
-    inline memory_t getMemType() {
+public:
+
+    memory_t getMemType() {
         return mem_type;
     }
 
-    inline uint64_t getDevId() {
+    uint64_t getDevId() {
         return devId;
     }
 
@@ -74,7 +73,7 @@ public:
         return NIXL_SUCCESS;
     }
 
-    inline bool operator==(const nixlCudaPtrCtx &rhs) {
+    bool operator==(const nixlCudaPtrCtx &rhs) {
         return (mem_type == rhs.mem_type) &&
                 internalCmp(rhs);
     }

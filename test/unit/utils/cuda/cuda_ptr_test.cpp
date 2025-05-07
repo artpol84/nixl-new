@@ -58,7 +58,6 @@ void cudaQueryAddr(void *address, bool &is_dev,
     attr_type[1] = CU_POINTER_ATTRIBUTE_IS_MANAGED;
     attr_data[1] = &is_managed;
     attr_type[2] = CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL;
-
     attr_data[2] = &dev;
     attr_type[3] = CU_POINTER_ATTRIBUTE_CONTEXT;
     attr_data[3] = &ctx;
@@ -77,8 +76,8 @@ void allocateCUDA(int dev_id, size_t len, void* &addr)
 
     CHECK_CUDA_ERROR(cudaMalloc(&addr, len), "Failed to allocate CUDA buffer 0");
     cudaQueryAddr(addr, is_dev, dev, ctx);
-    std::cout << "CUDA addr: " << std::hex << addr << " dev=" << std::dec << dev
-        << " ctx=" << std::hex << ctx << std::dec << std::endl;
+    NIXL_INFO << "CUDA addr: " << std::hex << addr << " dev=" << std::dec << dev
+              << " ctx=" << std::hex << ctx << std::dec << std::endl;
 }
 
 void releaseCUDA(int dev_id, void* addr)
@@ -90,8 +89,11 @@ void releaseCUDA(int dev_id, void* addr)
 #ifdef HAVE_CUDA_VMM
 
 #define ROUND_UP(value, granularity) ((((value) + (granularity) - 1) / (granularity)) * (granularity))
-static size_t __attribute__((unused)) padded_size = 0;
-static CUmemGenericAllocationHandle __attribute__((unused)) handle;
+
+namespace {
+    static size_t __attribute__((unused)) padded_size = 0;
+    static CUmemGenericAllocationHandle __attribute__((unused)) handle;
+}
 
 void allocateVMM(int dev_id, size_t len, void* &_addr)
 {
@@ -112,7 +114,7 @@ void allocateVMM(int dev_id, size_t len, void* &_addr)
     CHECK_CUDA_DRIVER_ERROR(cuMemGetAllocationGranularity(&granularity, &prop,
                                                           CU_MEM_ALLOC_GRANULARITY_MINIMUM),
                             "Failed to get allocation granularity");
-    std::cout << "Granularity: " << granularity << std::endl;
+    NIXL_INFO << "Granularity: " << granularity << std::endl;
 
     padded_size = ROUND_UP(len, granularity);
     CHECK_CUDA_DRIVER_ERROR(cuMemCreate(&handle, padded_size, &prop, 0),
@@ -127,7 +129,7 @@ void allocateVMM(int dev_id, size_t len, void* &_addr)
     CHECK_CUDA_DRIVER_ERROR(cuMemMap(addr, padded_size, 0, handle, 0),
                             "Failed to map memory");
 
-    std::cout << "Address: " << std::hex << std::showbase << addr
+    NIXL_INFO << "Address: " << std::hex << std::showbase << addr
               << " Buffer size: " << std::dec << len
               << " Padded size: " << std::dec << padded_size << std::endl;
 
@@ -166,54 +168,53 @@ int main()
     cudaGetDeviceCount(&ngpus);
 
     if (!ngpus) {
-        cout << "No GPGPU devices detected, nothing to test!" << endl;
+        NIXL_INFO << "No GPGPU devices detected, nothing to test!" << endl;
         return 0;
     }
 
     /* Test regular CUDA malloc */
     {
-        cout << endl << "*************************" << endl;
-        cout << "      Test malloc'd memory" << endl;
+        NIXL_INFO << endl << "*************************" << endl;
+        NIXL_INFO << "      Test malloc'd memory" << endl;
 
         address = malloc(len);
         assert(address);
         std::unique_ptr<nixlCudaPtrCtx> ctx =
                 nixlCudaPtrCtx::nixlCudaPtrCtxInit(address);
         assert(ctx->getMemType() == nixlCudaPtrCtx::MEM_HOST);
-        cout << " >>>> PASSED! <<<<<<<" << endl;
+        NIXL_INFO << " >>>> PASSED! <<<<<<<" << endl;
         free(address);
-        cout << "*************************" << endl;
+        NIXL_INFO << "*************************" << endl;
     }
 
     /* Test regular CUDA malloc */
     {
-        cout << endl << "*************************" << endl;
-        cout << "      Test CUDA malloc'd memory" << endl;
-
+        NIXL_INFO << endl << "*************************" << endl;
+        NIXL_INFO << "      Test CUDA malloc'd memory" << endl;
 
         allocateCUDA(0, len, address);
         std::unique_ptr<nixlCudaPtrCtx> ctx =
                 nixlCudaPtrCtx::nixlCudaPtrCtxInit(address);
         assert(ctx->getMemType() == nixlCudaPtrCtx::MEM_DEV);
-        cout << " >>>> PASSED! <<<<<<<" << endl;
+        NIXL_INFO << " >>>> PASSED! <<<<<<<" << endl;
         releaseCUDA(0, address);
-        cout << "*************************" << endl;
+        NIXL_INFO << "*************************" << endl;
     }
 
 #ifdef HAVE_CUDA_VMM
     /* Test regular CUDA malloc */
     {
 
-        cout << endl << "*************************" << endl;
-        cout << "      Test VMM mapped memory" << endl;
+        NIXL_INFO << endl << "*************************" << endl;
+        NIXL_INFO << "      Test VMM mapped memory" << endl;
 
         allocateVMM(0, len, address);
         std::unique_ptr<nixlCudaPtrCtx> ctx =
                 nixlCudaPtrCtx::nixlCudaPtrCtxInit(address);
         assert(ctx->getMemType() == nixlCudaPtrCtx::MEM_VMM_DEV);
-        cout << " >>>> PASSED! <<<<<<<" << endl;
+        NIXL_INFO << " >>>> PASSED! <<<<<<<" << endl;
         releaseVMM(0, len, address);
-        cout << "*************************" << endl;
+        NIXL_INFO << "*************************" << endl;
     }
 #endif
 
