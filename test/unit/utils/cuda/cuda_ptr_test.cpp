@@ -21,6 +21,7 @@
 #include <cuda.h>
 
 #include <cuda/cuda_utils.h>
+#include <nixl_log.h>
 
 using namespace std;
 
