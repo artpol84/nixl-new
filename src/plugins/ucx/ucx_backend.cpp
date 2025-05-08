@@ -519,7 +519,8 @@ nixl_status_t nixlUcxEngine::registerMem (const nixlBlobDesc &mem,
             NIXL_ERROR << "Address " << std::hex << mem.addr << std::dec
                        << " is not supported by the UCX backend";
             NIXL_ERROR << "Returned status is " << nixlEnumStrings::statusStr(status);
-            NIXL_ERROR << "The likely reason is that UCX supports only one CUDA context per UCX context";
+            NIXL_ERROR << "The likely reason is that your UCX supports only one CUDA device per UCP context";
+            NIXL_ERROR << "Consider upgrading to UCX 1.19 or using UCX_MO backend";
             return status;
         }
     }
