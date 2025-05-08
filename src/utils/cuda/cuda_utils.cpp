@@ -299,7 +299,7 @@ nixlCudaMemCtxImpl::enableAddr(const void *address, uint64_t chkDevId)
     }
 
     if (newDevId != chkDevId) {
-        NIXL_DEBUG << "Mismatch between the expected and actial CUDA device id";
+        NIXL_DEBUG << "Mismatch between the expected and actual CUDA device id";
         NIXL_DEBUG << "Expect: " << chkDevId << ", have: " << newDevId;
         return NIXL_ERR_MISMATCH;
     }
