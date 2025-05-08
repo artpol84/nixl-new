@@ -18,6 +18,7 @@
 #define _NIXL_TYPES_H
 #include <vector>
 #include <string>
+#include <array>
 #include <unordered_map>
 
 
