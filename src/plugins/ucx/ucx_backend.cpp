@@ -16,6 +16,7 @@
  */
 #include "ucx_backend.h"
 #include <serdes/serdes.h>
+#include <nixl_log.h>
 
 
 /****************************************
@@ -267,7 +268,7 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams* init_params)
         pthrOn = false;
     }
 
-    cudaMemCtx = nixlCudaMemCtxInit();
+    cudaMemCtx = nixlCudaMemCtx::nixlCudaMemCtxInit();
 
     progressThreadStart();
 }
@@ -509,16 +510,15 @@ nixl_status_t nixlUcxEngine::registerMem (const nixlBlobDesc &mem,
     size_t rkey_size;
 
     if (nixl_mem == VRAM_SEG) {
-        bool need_restart;
         nixl_status_t status = cudaMemCtx->enableAddr((void*)mem.addr, mem.devId);
         if (NIXL_IN_PROG == status) {
             // The context was updated and must be set in the progress thread
             // This procedure ensures that access to cudaMemCtx is serialized
             progressThreadRestart();
-        }
-        if (NIXL_SUCCESS != status) {
-            NIXL_ERROR << "Address " <<  mem.addr << 
-                         " is not supported by the UCX backend";
+        } else if (NIXL_SUCCESS != status) {
+            NIXL_ERROR << "Address " << std::hex << mem.addr << std::dec
+                       << " is not supported by the UCX backend";
+            NIXL_ERROR << "Returned status is " << nixlEnumStrings::statusStr(status);
             NIXL_ERROR << "The likely reason is that UCX supports only one CUDA context per UCX context";
             return status;
         }

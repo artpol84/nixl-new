@@ -25,7 +25,7 @@
 *****************************************/
 
 class nixlCudaMemCtx {
-protected:
+public:
     enum memory_t {
         MEM_NONE,
         MEM_HOST,
@@ -33,7 +33,7 @@ protected:
         MEM_VMM_HOST,
         MEM_VMM_DEV,
     } ;
-
+protected:
     memory_t memType;
     uint64_t _devId;
 public:
@@ -43,11 +43,11 @@ public:
     virtual ~nixlCudaMemCtx() = default;
 
     memory_t getMemType() {
-        return mem_type;
+        return memType;
     }
 
     uint64_t getDevId() {
-        return devId;
+        return _devId;
     }
 
     virtual nixl_status_t set() {
@@ -55,7 +55,7 @@ public:
         return NIXL_SUCCESS;
     }
 
-    virtual nixl_status_t enableAddr(const void *address) {
+    virtual nixl_status_t enableAddr(const void *address, uint64_t chkDevId) {
         return NIXL_SUCCESS;
     }
 
