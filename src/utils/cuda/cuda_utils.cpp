@@ -260,7 +260,7 @@ nixlCudaMemCtxImpl::queryCuda(const void *address, memory_t &type, uint64_t &id,
     return NIXL_SUCCESS;
 }
 
-nixl_status_t 
+nixl_status_t
 nixlCudaMemCtxImpl::enableAddr(const void *address, uint64_t chkDevId)
 {
     nixl_status_t status;
@@ -278,14 +278,14 @@ nixlCudaMemCtxImpl::enableAddr(const void *address, uint64_t chkDevId)
             addrMemType = tmpMemType;
         } else if (status == NIXL_ERR_NOT_FOUND) {
             addrMemType = MEM_HOST;
-            newDevId = 
+            newDevId =
             status = NIXL_SUCCESS;
         } else {
-            NIXL_ERROR << "CUDA Query failed with status = " 
+            NIXL_ERROR << "CUDA Query failed with status = "
                        << nixlEnumStrings::statusStr(status);
         }
     } else {
-        NIXL_ERROR << "VMM Query failed with status = " 
+        NIXL_ERROR << "VMM Query failed with status = "
                    << nixlEnumStrings::statusStr(status);
     }
 
