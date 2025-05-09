@@ -122,7 +122,7 @@ void allocateVMM(int dev_id, size_t len, void* &_addr)
         cout << "Granularity: " << granularity << std::endl;
         padded_size = ROUND_UP(len, granularity);
     }
-    
+
     CHECK_CUDA_DRIVER_ERROR(cuMemCreate(&handle, padded_size, &prop, 0),
                             "Failed to create allocation");
 
@@ -155,7 +155,7 @@ void releaseVMM(int dev_id, size_t len, void* addr)
     CHECK_CUDA_ERROR(cudaSetDevice(dev_id), "Failed to set device");
     CHECK_CUDA_DRIVER_ERROR(cuMemUnmap((CUdeviceptr)addr, padded_size),
                             "Failed to unmap memory");
-    
+
     assert(handles.find(addr) != handles.end());
     CHECK_CUDA_DRIVER_ERROR(cuMemRelease(handles[addr]),
                             "Failed to release memory");
