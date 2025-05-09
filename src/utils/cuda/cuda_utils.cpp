@@ -282,11 +282,13 @@ nixlCudaMemCtxImpl::enableAddr(const void *address, uint64_t chkDevId)
             status = NIXL_SUCCESS;
         } else {
             NIXL_ERROR << "CUDA Query failed with status = "
-                       << nixlEnumStrings::statusStr(status);
+                       << status;
+            // TODO use nixlEnumStrings::statusStr(status); once circ dep between libnixl & utils is resolved
         }
     } else {
         NIXL_ERROR << "VMM Query failed with status = "
-                   << nixlEnumStrings::statusStr(status);
+                   << status;
+        // TODO use nixlEnumStrings::statusStr(status); once circ dep between libnixl & utils is resolved
     }
 
     if (status != NIXL_SUCCESS) {
