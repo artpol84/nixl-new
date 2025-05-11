@@ -186,7 +186,7 @@ nixlCudaMemCtxImpl::releaseVmmCudaCtx(uint64_t id) const
 nixl_status_t
 nixlCudaMemCtxImpl::queryCuda(const void *address, memory_t &type, uint64_t &id, CUcontext &newCtx)
 {
-    constexpr int numAttrs = 4
+    constexpr int numAttrs = 4;
     CUpointer_attribute attr_type[numAttrs];
     void *attr_data[numAttrs];
     CUmemorytype cudaMemType = CU_MEMORYTYPE_HOST;
@@ -203,7 +203,7 @@ nixlCudaMemCtxImpl::queryCuda(const void *address, memory_t &type, uint64_t &id,
     attr_type[3] = CU_POINTER_ATTRIBUTE_CONTEXT;
     attr_data[3] = &newCtx;
 
-    result = cuPointerGetAttributes(NUM_ATTRS, attr_type, attr_data, (CUdeviceptr)address);
+    result = cuPointerGetAttributes(numAttrs, attr_type, attr_data, (CUdeviceptr)address);
     if (CUDA_SUCCESS != result) {
         NIXL_ERROR << "cuPointerGetAttributes() failed. result = "
                 << result;
@@ -330,9 +330,6 @@ nixlCudaMemCtxImpl::set()
         }
         return NIXL_SUCCESS;
     }
-    case MEM_VMM_HOST:
-        NIXL_ERROR << "Host VMM mappings are not supported";
-        // fall through
     default:
         // TODO error log
         return NIXL_ERR_INVALID_PARAM;
