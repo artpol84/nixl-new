@@ -112,7 +112,6 @@ void allocateVMM(int dev_id, size_t len, void* &_addr)
     prop.allocFlags.gpuDirectRDMACapable = 1;
     prop.location.id = dev_id;
     prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
-    // prop.location.type = CU_MEM_LOCATION_TYPE_HOST_NUMA;
 
     // Get the allocation granularity
     if (!padded_size) {

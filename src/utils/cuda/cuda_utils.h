@@ -30,7 +30,6 @@ public:
         MEM_NONE,
         MEM_HOST,
         MEM_DEV,
-        MEM_VMM_HOST,
         MEM_VMM_DEV,
     } ;
 protected:
@@ -42,11 +41,11 @@ public:
 
     virtual ~nixlCudaMemCtx() = default;
 
-    memory_t getMemType() {
+    memory_t getMemType() const {
         return memType;
     }
 
-    uint64_t getDevId() {
+    uint64_t getDevId() const {
         return _devId;
     }
 
@@ -59,6 +58,5 @@ public:
         return NIXL_SUCCESS;
     }
 
-    static bool vramIsSupported();
     static std::unique_ptr<nixlCudaMemCtx> nixlCudaMemCtxInit();
 };

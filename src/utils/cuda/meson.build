@@ -24,13 +24,6 @@ if cuda_dep.found()
     if cpp.has_function(func, dependencies: cuda_dep)
         compile_flags += '-DHAVE_' + func.underscorify().to_upper() + '=1'
     endif
-
-    macroName = 'CU_MEM_LOCATION_TYPE_HOST'
-    if cpp.has_define(macroName)
-        compile_flags += '-DHAVE_' + macroName + '=1'
-    endif
-else
-    compile_flags += '-UHAVE_CUDA'
 endif
 
 cuda_utils_lib = library('cuda_utils',
