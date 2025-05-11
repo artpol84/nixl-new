@@ -46,41 +46,10 @@ using namespace std;
         }                                                                           \
     } while(0)
 
-void cudaQueryAddr(void *address, bool &is_dev,
-                         CUdevice &dev, CUcontext &ctx)
-{
-    CUmemorytype mem_type = CU_MEMORYTYPE_HOST;
-    uint32_t is_managed = 0;
-#define NUM_ATTRS 4
-    CUpointer_attribute attr_type[NUM_ATTRS];
-    void *attr_data[NUM_ATTRS];
-
-    attr_type[0] = CU_POINTER_ATTRIBUTE_MEMORY_TYPE;
-    attr_data[0] = &mem_type;
-    attr_type[1] = CU_POINTER_ATTRIBUTE_IS_MANAGED;
-    attr_data[1] = &is_managed;
-    attr_type[2] = CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL;
-    attr_data[2] = &dev;
-    attr_type[3] = CU_POINTER_ATTRIBUTE_CONTEXT;
-    attr_data[3] = &ctx;
-
-    CHECK_CUDA_DRIVER_ERROR(cuPointerGetAttributes(4, attr_type, attr_data, (CUdeviceptr)address),
-                            "Failed to cuPointerGetAttributes");
-
-    is_dev = (mem_type == CU_MEMORYTYPE_DEVICE);
-}
-
 void allocateCUDA(int dev_id, size_t len, void* &addr)
 {
-    bool is_dev;
-    CUdevice dev;
-    CUcontext ctx;
-
     CHECK_CUDA_ERROR(cudaSetDevice(dev_id), "Failed to cudaSetDevice()");
     CHECK_CUDA_ERROR(cudaMalloc(&addr, len), "Failed to allocate CUDA buffer");
-    cudaQueryAddr(addr, is_dev, dev, ctx);
-    cout << "CUDA addr: " << std::hex << addr << " dev=" << std::dec << dev
-              << " ctx=" << std::hex << ctx << std::dec << std::endl;
 }
 
 void releaseCUDA(int dev_id, void* addr)
@@ -112,7 +81,6 @@ void allocateVMM(int dev_id, size_t len, void* &_addr)
     prop.allocFlags.gpuDirectRDMACapable = 1;
     prop.location.id = dev_id;
     prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
-    // prop.location.type = CU_MEM_LOCATION_TYPE_HOST_NUMA;
 
     // Get the allocation granularity
     if (!padded_size) {
