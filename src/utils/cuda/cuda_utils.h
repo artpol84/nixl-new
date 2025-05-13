@@ -24,39 +24,43 @@
  * Pointer Context
 *****************************************/
 
-class nixlCudaMemCtx {
-public:
-    enum memory_t {
-        MEM_NONE,
-        MEM_HOST,
-        MEM_DEV,
-        MEM_VMM_DEV,
-    } ;
-protected:
-    memory_t memType;
-    uint64_t _devId;
-public:
-    nixlCudaMemCtx() : memType(MEM_NONE), _devId(0)
-    {  }
+namespace nixlCuda {
+    class memCtx {
+    public:
+        enum memory_t {
+            MEM_NONE,
+            MEM_HOST,
+            MEM_DEV,
+            MEM_VMM_DEV,
+        } ;
+    protected:
+        memory_t memType;
+        uint64_t _devId;
+    public:
+        memCtx() : memType(MEM_NONE), _devId(0)
+        {  }
 
-    virtual ~nixlCudaMemCtx() = default;
+        virtual ~memCtx() = default;
 
-    memory_t getMemType() const {
-        return memType;
-    }
+        memory_t getMemType() const {
+            return memType;
+        }
 
-    uint64_t getDevId() const {
-        return _devId;
-    }
+        uint64_t getDevId() const {
+            return _devId;
+        }
 
-    virtual nixl_status_t set() {
-        // no-op for non-CUDA case
-        return NIXL_SUCCESS;
-    }
+        virtual nixl_status_t set() {
+            // no-op for non-CUDA case
+            return NIXL_SUCCESS;
+        }
 
-    virtual nixl_status_t enableAddr(const void *address, uint64_t chkDevId) {
-        return NIXL_SUCCESS;
-    }
+        virtual nixl_status_t enableAddr(const void *address, uint64_t chkDevId) {
+            return NIXL_SUCCESS;
+        }
 
-    static std::unique_ptr<nixlCudaMemCtx> nixlCudaMemCtxInit();
-};
+        static std::unique_ptr<memCtx> memCtxInit();
+    };
+
+    uint32_t numDevices();
+}

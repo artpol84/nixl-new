@@ -15,8 +15,6 @@
 
 if cuda_dep.found()
     cpp_args = '-DHAVE_CUDA'
-else
-    cpp_args = '-UHAVE_CUDA'
 endif
 
 ucx_backend_test = executable('ucx_backend_test',

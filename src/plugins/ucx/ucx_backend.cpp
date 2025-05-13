@@ -302,7 +302,7 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams* init_params)
         pthrOn = false;
     }
 
-    cudaMemCtx = nixlCudaMemCtx::nixlCudaMemCtxInit();
+    cudaMemCtx = nixlCuda::memCtx::memCtxInit();
 
     progressThreadStart();
 }

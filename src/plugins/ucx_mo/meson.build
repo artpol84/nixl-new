@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ucx_mo_dep_list = [nixl_infra, ucx_backend_interface, serdes_interface]
+ucx_mo_dep_list = [nixl_infra, ucx_backend_interface, serdes_interface, cuda_utils_interface]
 
 compile_flags = []
 

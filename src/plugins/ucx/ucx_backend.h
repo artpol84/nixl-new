@@ -96,13 +96,6 @@ class nixlUcxPublicMetadata : public nixlBackendMD {
     friend class nixlUcxEngine;
 };
 
-// Forward declaration of CUDA context
-// It is only visible in ucx_backend.cpp to ensure that
-// HAVE_CUDA works properly
-// Once we will introduce static config (i.e. config.h) that
-// will be part of NIXL installation - we can have
-// HAVE_CUDA in h-files
-class nixlUcxCudaCtx;
 class nixlUcxEngine : public nixlBackendEngine {
     private:
         /* UCX data */
@@ -121,7 +114,7 @@ class nixlUcxEngine : public nixlBackendEngine {
         nixlTime::us_t pthrDelay;
 
         /* CUDA data*/
-        std::unique_ptr<nixlCudaMemCtx> cudaMemCtx;
+        std::unique_ptr<nixlCuda::memCtx> cudaMemCtx;
 
         /* Notifications */
         notif_list_t notifMainList;
