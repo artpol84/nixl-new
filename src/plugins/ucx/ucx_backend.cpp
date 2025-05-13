@@ -22,6 +22,7 @@
 #include "absl/strings/numbers.h"
 #include <serdes/serdes.h>
 
+static constexpr int const noSyncIters = 32;
 
 /****************************************
  * UCX request management
