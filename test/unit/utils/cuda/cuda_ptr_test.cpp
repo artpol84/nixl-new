@@ -157,7 +157,7 @@ int main()
         std::unique_ptr<nixlCuda::memCtx> ctx = nixlCuda::memCtx::memCtxInit();
         assert(NIXL_SUCCESS == ctx->enableAddr(address, 0));
         assert(NIXL_SUCCESS == ctx->set());
-        cout << " >>>> PASSED! <<<<<<<" << endl;
+        cout << "      >>>> PASSED! <<<<<<<" << endl;
         free(address);
         cout << "*************************" << endl;
     }
@@ -173,7 +173,7 @@ int main()
         assert(NIXL_IN_PROG == ctx->enableAddr(address, 0));
         assert(NIXL_SUCCESS == ctx->set());
         assert(ctx->getMemType() == nixlCuda::memCtx::MEM_DEV);
-        cout << " >>>> PASSED! <<<<<<<" << endl;
+        cout << "      >>>> PASSED! <<<<<<<" << endl;
         releaseCUDA(0, address);
         cout << "*************************" << endl;
     }
@@ -197,7 +197,7 @@ int main()
         assert(NIXL_ERR_MISMATCH == ctx->enableAddr(address2, 0));
         assert(NIXL_ERR_MISMATCH == ctx->enableAddr(address2, 1));
 
-        cout << " >>>> PASSED! <<<<<<<" << endl;
+        cout << "      >>>> PASSED! <<<<<<<" << endl;
 
         releaseCUDA(0, address);
         releaseCUDA(1, address2);
@@ -222,7 +222,7 @@ int main()
         allocateCUDA(0, len, address2);
         assert(NIXL_SUCCESS == ctx->enableAddr(address2, 0));
 
-        cout << " >>>> PASSED! <<<<<<<" << endl;
+        cout << "      >>>> PASSED! <<<<<<<" << endl;
         releaseVMM(0, len, address);
         releaseCUDA(0, address2);
         cout << "*************************" << endl;
@@ -252,7 +252,7 @@ int main()
         assert(NIXL_ERR_MISMATCH == ctx->enableAddr(address3, 0));
         assert(NIXL_ERR_MISMATCH == ctx->enableAddr(address3, 1));
 
-        cout << " >>>> PASSED! <<<<<<<" << endl;
+        cout << "      >>>> PASSED! <<<<<<<" << endl;
         releaseVMM(0, len, address);
         releaseVMM(1, len, address2);
         releaseCUDA(1, address3);

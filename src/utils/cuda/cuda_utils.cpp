@@ -37,10 +37,10 @@ namespace nixlCuda {
         int devId;
         CUcontext ctx;
 
-        nixl_status_t queryVmm(const void *address, memory_t &type, uint64_t &id);
-        nixl_status_t retainVmmCudaCtx(uint64_t id, CUcontext &newCtx) const;
-        nixl_status_t releaseVmmCudaCtx(uint64_t id) const;
-        nixl_status_t queryCuda(const void *address, memory_t &type, uint64_t &id,
+        nixl_status_t queryVmm(const void *address, memory_t &type, int &id);
+        nixl_status_t retainVmmCudaCtx(int id, CUcontext &newCtx) const;
+        nixl_status_t releaseVmmCudaCtx(int id) const;
+        nixl_status_t queryCuda(const void *address, memory_t &type, int &id,
                                 CUcontext &newCtx);
 
     public:
@@ -244,7 +244,7 @@ namespace nixlCuda {
             NIXL_ERROR << "CU_MEMORYTYPE_ARRAY memory type is not supported";
             return NIXL_ERR_INVALID_PARAM;
         default:
-            NIXL_ERROR << "Unknown CUDA memory type" << cudaMemType;
+            NIXL_TRACE << "Unknown CUDA memory type" << cudaMemType;
             return NIXL_ERR_NOT_FOUND;
         }
 
