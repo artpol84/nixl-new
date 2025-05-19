@@ -192,7 +192,7 @@ namespace nixlCuda {
         auto result = cuDeviceGet(&device, id);
         if (result != CUDA_SUCCESS) {
             NIXL_ERROR << "cuDeviceGet() failed. result = " << result;
-            return NIXL_ERR_UNKNOWN;
+            return;
         }
 
         result = cuDevicePrimaryCtxRelease(device);
