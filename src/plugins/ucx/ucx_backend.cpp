@@ -183,8 +183,6 @@ void nixlUcxEngine::progressFunc()
 
     cudaMemCtx->set();
 
-    pthrActive = 1;
-
     {
         std::unique_lock<std::mutex> lock(pthrActiveLock);
         pthrActive = true;
