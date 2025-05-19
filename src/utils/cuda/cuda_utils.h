@@ -35,19 +35,14 @@ namespace nixlCuda {
         } ;
     protected:
         memory_t memType;
-        uint64_t _devId;
     public:
-        memCtx() : memType(MEM_NONE), _devId(0)
+        memCtx() : memType(MEM_NONE)
         {  }
 
         virtual ~memCtx() = default;
 
         memory_t getMemType() const {
             return memType;
-        }
-
-        uint64_t getDevId() const {
-            return _devId;
         }
 
         virtual nixl_status_t set() {
