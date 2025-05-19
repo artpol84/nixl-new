@@ -39,7 +39,7 @@ namespace nixlCuda {
 
         nixl_status_t queryVmm(const void *address, memory_t &type, int &id);
         nixl_status_t retainVmmCudaCtx(int id, CUcontext &newCtx) const;
-        nixl_status_t releaseVmmCudaCtx(int id) const;
+        void releaseVmmCudaCtx(int id) const;
         nixl_status_t queryCuda(const void *address, memory_t &type, int &id,
                                 CUcontext &newCtx);
 
@@ -50,10 +50,7 @@ namespace nixlCuda {
 
         ~memCtxImpl() override {
             if (MEM_VMM_DEV == memType) {
-                nixl_status_t status = releaseVmmCudaCtx(devId);
-                if (NIXL_SUCCESS != status) {
-                    NIXL_ERROR << "Failed to release CUDA context";
-                }
+                releaseVmmCudaCtx(devId);
             }
         }
 
@@ -187,7 +184,7 @@ namespace nixlCuda {
         return NIXL_SUCCESS;
     }
 
-    nixl_status_t
+    void
     memCtxImpl::releaseVmmCudaCtx(int id) const
     {
         CUdevice device;
@@ -203,7 +200,6 @@ namespace nixlCuda {
             NIXL_ERROR << "cuDevicePrimaryCtxRelease() failed. result = "
                     << result;
         }
-        return (CUDA_SUCCESS == result) ? NIXL_SUCCESS : NIXL_ERR_UNKNOWN;
     }
 
     nixl_status_t
