@@ -34,7 +34,7 @@ namespace nixlCuda {
 #ifdef HAVE_CUDA
 
     class memCtxImpl : public memCtx {
-    private:
+        int devId;
         CUcontext ctx;
 
         nixl_status_t queryVmm(const void *address, memory_t &type, uint64_t &id);
@@ -50,7 +50,7 @@ namespace nixlCuda {
 
         ~memCtxImpl() override {
             if (MEM_VMM_DEV == memType) {
-                nixl_status_t status = releaseVmmCudaCtx(_devId);
+                nixl_status_t status = releaseVmmCudaCtx(devId);
                 if (NIXL_SUCCESS != status) {
                     NIXL_ERROR << "Failed to release CUDA context";
                 }
@@ -85,8 +85,7 @@ namespace nixlCuda {
     {
         int n_vram_dev = 0;
 #ifdef HAVE_CUDA
-        cudaError_t result;
-        result = cudaGetDeviceCount(&n_vram_dev);
+        const auto result = cudaGetDeviceCount(&n_vram_dev);
         if (result != cudaSuccess) {
             NIXL_ERROR << "cudaGetDeviceCount failed: result = " << result;
         }
@@ -101,20 +100,19 @@ namespace nixlCuda {
 #ifdef HAVE_CUDA
 
     nixl_status_t
-    memCtxImpl::queryVmm(const void *address, memory_t &type, uint64_t &id)
+    memCtxImpl::queryVmm(const void *address, memory_t &type, int &id)
     {
         nixl_status_t ret = NIXL_ERR_NOT_FOUND;
 
 #if HAVE_CUMEMRETAINALLOCATIONHANDLE
         CUmemAllocationProp prop = {};
         CUmemGenericAllocationHandle alloc_handle;
-        CUresult result;
 
         /* Check if memory is allocated using VMM API and see if host memory needs
         * to be treated as pinned device memory */
-        result = cuMemRetainAllocationHandle(&alloc_handle, (void*)address);
+        auto result = cuMemRetainAllocationHandle(&alloc_handle, (void*)address);
         if (result != CUDA_SUCCESS) {
-            NIXL_DEBUG << "cuMemRetainAllocationHandle() failed. result = "
+            NIXL_TRACE << "cuMemRetainAllocationHandle() failed. result = "
                     << result;
             return NIXL_ERR_NOT_FOUND;
         }
@@ -128,7 +126,7 @@ namespace nixlCuda {
             goto err;
         }
 
-        id = (CUdevice)prop.location.id;
+        id = prop.location.id;
         switch (prop.location.type) {
         case CU_MEM_LOCATION_TYPE_DEVICE:
             type = MEM_VMM_DEV;
@@ -155,12 +153,19 @@ namespace nixlCuda {
     }
 
     nixl_status_t
-    memCtxImpl::retainVmmCudaCtx(uint64_t id, CUcontext &newCtx) const
+    memCtxImpl::retainVmmCudaCtx(int id, CUcontext &newCtx) const
     {
+        CUdevice device;
+
+        auto result = cuDeviceGet(&device, id);
+        if (result != CUDA_SUCCESS) {
+            NIXL_ERROR << "cuDeviceGet() failed. result = " << result;
+            return NIXL_ERR_UNKNOWN;
+        }
+
         unsigned int flags;
         int active;
-
-        CUresult result = cuDevicePrimaryCtxGetState(id, &flags, &active);
+        result = cuDevicePrimaryCtxGetState(device, &flags, &active);
         if (result != CUDA_SUCCESS) {
             NIXL_ERROR << "cuDevicePrimaryCtxGetState() failed. result = "
                     << result;
@@ -172,7 +177,7 @@ namespace nixlCuda {
             return NIXL_ERR_INVALID_PARAM;
         }
 
-        result = cuDevicePrimaryCtxRetain(&newCtx, id);
+        result = cuDevicePrimaryCtxRetain(&newCtx, device);
         if (result != CUDA_SUCCESS) {
             NIXL_ERROR << "cuDevicePrimaryCtxRetain() failed. result = "
                     << result;
@@ -183,9 +188,17 @@ namespace nixlCuda {
     }
 
     nixl_status_t
-    memCtxImpl::releaseVmmCudaCtx(uint64_t id) const
+    memCtxImpl::releaseVmmCudaCtx(int id) const
     {
-        CUresult result = cuDevicePrimaryCtxRelease(id);
+        CUdevice device;
+
+        auto result = cuDeviceGet(&device, id);
+        if (result != CUDA_SUCCESS) {
+            NIXL_ERROR << "cuDeviceGet() failed. result = " << result;
+            return NIXL_ERR_UNKNOWN;
+        }
+
+        result = cuDevicePrimaryCtxRelease(device);
         if (result != CUDA_SUCCESS) {
             NIXL_ERROR << "cuDevicePrimaryCtxRelease() failed. result = "
                     << result;
@@ -194,7 +207,7 @@ namespace nixlCuda {
     }
 
     nixl_status_t
-    memCtxImpl::queryCuda(const void *address, memory_t &type, uint64_t &id, CUcontext &newCtx)
+    memCtxImpl::queryCuda(const void *address, memory_t &type, int &id, CUcontext &newCtx)
     {
         constexpr int numAttrs = 4;
         CUpointer_attribute attr_type[numAttrs];
@@ -202,14 +215,14 @@ namespace nixlCuda {
         CUmemorytype cudaMemType = CU_MEMORYTYPE_HOST;
         uint32_t is_managed = 0;
         CUresult result;
-        CUdevice cuDevId;
+        int devOrdinal;
 
         attr_type[0] = CU_POINTER_ATTRIBUTE_MEMORY_TYPE;
         attr_data[0] = &cudaMemType;
         attr_type[1] = CU_POINTER_ATTRIBUTE_IS_MANAGED;
         attr_data[1] = &is_managed;
         attr_type[2] = CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL;
-        attr_data[2] = &cuDevId;
+        attr_data[2] = &devOrdinal;
         attr_type[3] = CU_POINTER_ATTRIBUTE_CONTEXT;
         attr_data[3] = &newCtx;
 
@@ -220,7 +233,7 @@ namespace nixlCuda {
             return NIXL_ERR_NOT_FOUND;
         }
 
-        id = (uint64_t)cuDevId;
+        id = devOrdinal;
         switch(cudaMemType) {
         case CU_MEMORYTYPE_DEVICE:
             type = MEM_DEV;
@@ -250,7 +263,7 @@ namespace nixlCuda {
         memory_t addrMemType = MEM_NONE;
         memory_t tmpMemType;
         CUcontext newCtx;
-        uint64_t newDevId;
+        int newDevId;
 
         status = queryVmm(address, tmpMemType, newDevId);
         if (NIXL_SUCCESS == status) {
@@ -261,11 +274,10 @@ namespace nixlCuda {
                 addrMemType = tmpMemType;
             } else if (status == NIXL_ERR_NOT_FOUND) {
                 addrMemType = MEM_HOST;
-                newDevId =
                 status = NIXL_SUCCESS;
             } else {
                 NIXL_ERROR << "CUDA Query failed with status = "
-                        << status;
+                           << status;
                 // TODO use nixlEnumStrings::statusStr(status); once circ dep between libnixl & utils is resolved
             }
         } else {
@@ -283,7 +295,7 @@ namespace nixlCuda {
             return NIXL_SUCCESS;
         }
 
-        if (newDevId != chkDevId) {
+        if ((uint64_t)newDevId != chkDevId) {
             NIXL_DEBUG << "Mismatch between the expected and actual CUDA device id";
             NIXL_DEBUG << "Expect: " << chkDevId << ", have: " << newDevId;
             return NIXL_ERR_MISMATCH;
@@ -300,7 +312,7 @@ namespace nixlCuda {
                 /* fall through */
             case MEM_DEV:
                 ctx = newCtx;
-                _devId = newDevId;
+                devId = newDevId;
                 status = NIXL_IN_PROG;
                 // All set successfully =>  safe to set memType
                 memType = addrMemType;
@@ -313,7 +325,7 @@ namespace nixlCuda {
         } else {
             // UCX up to 1.18 only supports one device context per
             // UCP context. Enforce that!
-            if (_devId != newDevId) {
+            if (devId != newDevId) {
                 status = NIXL_ERR_MISMATCH;
             }
             return status;
