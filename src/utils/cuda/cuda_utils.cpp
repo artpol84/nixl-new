@@ -36,33 +36,45 @@ namespace nixlCuda {
     class memCtxImpl : public memCtx {
         int devId;
         CUcontext ctx;
+        memory_t memType;
 
+        [[nodiscard]]
         nixl_status_t queryVmm(const void *address, memory_t &type, int &id);
+        
+        [[nodiscard]]
         nixl_status_t retainVmmCudaCtx(int id, CUcontext &newCtx) const;
+
         void releaseVmmCudaCtx(int id) const;
+        
+        [[nodiscard]]
         nixl_status_t queryCuda(const void *address, memory_t &type, int &id,
                                 CUcontext &newCtx);
 
     public:
 
-        memCtxImpl() : memCtx()
-        {    }
-
+        memCtxImpl() : memCtx(), memType(MEM_NONE) = default;
         ~memCtxImpl() override {
             if (MEM_VMM_DEV == memType) {
                 releaseVmmCudaCtx(devId);
             }
         }
 
+        [[nodiscard]]
+        memory_t getMemType() const override {
+            return memType;
+        }
+
+        [[nodiscard]]
         nixl_status_t enableAddr(const void *address, uint64_t chkDevId) override;
 
+        [[nodiscard]]
         nixl_status_t set() override;
     };
 
 #endif
 
     std::unique_ptr<memCtx>
-    memCtx::memCtxInit()
+    makeMemCtx()
     {
         // Environment fixup
         if (getenv("NIXL_DISABLE_CUDA_ADDR_WA")) {
@@ -255,28 +267,22 @@ namespace nixlCuda {
     nixl_status_t
     memCtxImpl::enableAddr(const void *address, uint64_t chkDevId)
     {
-        nixl_status_t status;
         memory_t addrMemType = MEM_NONE;
-        memory_t tmpMemType;
         CUcontext newCtx;
         int newDevId;
 
-        status = queryVmm(address, tmpMemType, newDevId);
-        if (NIXL_SUCCESS == status) {
-            addrMemType = tmpMemType;
-        } else if (status == NIXL_ERR_NOT_FOUND) {
-            status = queryCuda(address, tmpMemType, newDevId, newCtx);
-            if (NIXL_SUCCESS == status) {
-                addrMemType = tmpMemType;
-            } else if (status == NIXL_ERR_NOT_FOUND) {
+        nixl_status_t status = queryVmm(address, addrMemType, newDevId);
+        if (status == NIXL_ERR_NOT_FOUND) {
+            status = queryCuda(address, addrMemType, newDevId, newCtx);
+            if (status == NIXL_ERR_NOT_FOUND) {
                 addrMemType = MEM_HOST;
                 status = NIXL_SUCCESS;
-            } else {
+            } else if (NIXL_SUCCESS != status) {
                 NIXL_ERROR << "CUDA Query failed with status = "
                            << status;
                 // TODO use nixlEnumStrings::statusStr(status); once circ dep between libnixl & utils is resolved
             }
-        } else {
+        } else if (NIXL_SUCCESS != status) {
             NIXL_ERROR << "VMM Query failed with status = "
                     << status;
             // TODO use nixlEnumStrings::statusStr(status); once circ dep between libnixl & utils is resolved
@@ -291,34 +297,14 @@ namespace nixlCuda {
             return NIXL_SUCCESS;
         }
 
-        if ((uint64_t)newDevId != chkDevId) {
+        if (static_cast<uint64_t>(newDevId) != chkDevId) {
             NIXL_DEBUG << "Mismatch between the expected and actual CUDA device id";
             NIXL_DEBUG << "Expect: " << chkDevId << ", have: " << newDevId;
             return NIXL_ERR_MISMATCH;
         }
 
-        if (MEM_NONE == memType) {
-            // Initialize the context
-            switch(addrMemType) {
-            case MEM_VMM_DEV:
-                status = retainVmmCudaCtx(newDevId, newCtx);
-                if (NIXL_SUCCESS != status) {
-                    return NIXL_ERR_UNKNOWN;
-                }
-                /* fall through */
-            case MEM_DEV:
-                ctx = newCtx;
-                devId = newDevId;
-                status = NIXL_IN_PROG;
-                // All set successfully =>  safe to set memType
-                memType = addrMemType;
-                break;
-            default:
-                NIXL_ERROR << "Unknown issue - memType is invalid: " <<  addrMemType;
-                return NIXL_ERR_INVALID_PARAM;
-            }
-            return status;
-        } else {
+        // The context was already set
+        if (MEM_NONE != memType) {
             // UCX up to 1.18 only supports one device context per
             // UCP context. Enforce that!
             if (devId != newDevId) {
@@ -326,6 +312,28 @@ namespace nixlCuda {
             }
             return status;
         }
+
+        // Initialize the context
+        switch(addrMemType) {
+        case MEM_VMM_DEV:
+            status = retainVmmCudaCtx(newDevId, newCtx);
+            if (NIXL_SUCCESS != status) {
+                return NIXL_ERR_UNKNOWN;
+            }
+            [[fallthrough]];
+        case MEM_DEV:
+            ctx = newCtx;
+            devId = newDevId;
+            status = NIXL_IN_PROG;
+            // All set successfully =>  safe to set memType
+            memType = addrMemType;
+            break;
+        default:
+            NIXL_ERROR << "Unknown issue - memType is invalid: " <<  addrMemType;
+            return NIXL_ERR_INVALID_PARAM;
+        }
+        return status;
+
     }
 
     nixl_status_t

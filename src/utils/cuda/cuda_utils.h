@@ -33,29 +33,36 @@ namespace nixlCuda {
             MEM_DEV,
             MEM_VMM_DEV,
         } ;
-    protected:
-        memory_t memType;
     public:
-        memCtx() : memType(MEM_NONE)
-        {  }
+        memCtx() = default;
+        memCtx( memCtx&& ) = delete;
+        memCtx( const memCtx& ) = delete;
+        void memCtx( memCtx&& ) = delete;
+        void memCtx( const memCtx& ) = delete;
 
         virtual ~memCtx() = default;
+        
 
+        [[nodiscard]]
         memory_t getMemType() const {
-            return memType;
+            return MEM_NONE;
         }
 
+        [[nodiscard]]
         virtual nixl_status_t set() {
             // no-op for non-CUDA case
             return NIXL_SUCCESS;
         }
 
+        [[nodiscard]]
         virtual nixl_status_t enableAddr(const void *address, uint64_t chkDevId) {
             return NIXL_SUCCESS;
         }
-
-        static std::unique_ptr<memCtx> memCtxInit();
     };
 
+    [[nodiscard]]
+    std::unique_ptr<memCtx> makeMemCtx();
+
+    [[nodiscard]]
     uint32_t numDevices();
 }
