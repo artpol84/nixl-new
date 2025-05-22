@@ -154,7 +154,7 @@ int main()
 
         void *address = malloc(len);
         assert(address);
-        std::unique_ptr<nixlCuda::memCtx> ctx = nixlCuda::memCtx::memCtxInit();
+        std::unique_ptr<nixlCuda::memCtx> ctx = nixlCuda::makeMemCtx();
         assert(NIXL_SUCCESS == ctx->enableAddr(address, 0));
         assert(NIXL_SUCCESS == ctx->set());
         cout << "      >>>> PASSED! <<<<<<<" << endl;
@@ -169,7 +169,7 @@ int main()
 
         void *address;
         allocateCUDA(0, len, address);
-        std::unique_ptr<nixlCuda::memCtx> ctx = nixlCuda::memCtx::memCtxInit();
+        std::unique_ptr<nixlCuda::memCtx> ctx = nixlCuda::makeMemCtx();
         assert(NIXL_IN_PROG == ctx->enableAddr(address, 0));
         assert(NIXL_SUCCESS == ctx->set());
         assert(ctx->getMemType() == nixlCuda::memCtx::MEM_DEV);
@@ -184,7 +184,7 @@ int main()
         cout << endl << "*************************" << endl;
         cout << "      Test CUDA malloc'd memory: device mismatch" << endl;
 
-        std::unique_ptr<nixlCuda::memCtx> ctx = nixlCuda::memCtx::memCtxInit();
+        std::unique_ptr<nixlCuda::memCtx> ctx = nixlCuda::makeMemCtx();
 
         void *address;
         allocateCUDA(0, len, address);
@@ -209,7 +209,7 @@ int main()
     {
         cout << endl << "*************************" << endl;
         cout << "      Test VMM mapped memory" << endl;
-        std::unique_ptr<nixlCuda::memCtx> ctx = nixlCuda::memCtx::memCtxInit();
+        std::unique_ptr<nixlCuda::memCtx> ctx = nixlCuda::makeMemCtx();
 
         void *address;
         allocateVMM(0, len, address);
@@ -232,7 +232,7 @@ int main()
      if (ngpus > 1) {
         cout << endl << "*************************" << endl;
         cout << "      Test VMM mapped memory: device MISMATCH" << endl;
-        std::unique_ptr<nixlCuda::memCtx> ctx = nixlCuda::memCtx::memCtxInit();
+        std::unique_ptr<nixlCuda::memCtx> ctx = nixlCuda::makeMemCtx();
 
         void *address;
         allocateVMM(0, len, address);

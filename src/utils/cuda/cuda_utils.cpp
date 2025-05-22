@@ -52,7 +52,7 @@ namespace nixlCuda {
 
     public:
 
-        memCtxImpl() : memCtx(), memType(MEM_NONE) = default;
+        memCtxImpl() : memCtx(), memType(MEM_NONE) { };
         ~memCtxImpl() override {
             if (MEM_VMM_DEV == memType) {
                 releaseVmmCudaCtx(devId);

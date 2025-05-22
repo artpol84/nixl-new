@@ -35,16 +35,17 @@ namespace nixlCuda {
         } ;
     public:
         memCtx() = default;
-        memCtx( memCtx&& ) = delete;
+        memCtx( memCtx& ) = delete;
         memCtx( const memCtx& ) = delete;
-        void memCtx( memCtx&& ) = delete;
-        void memCtx( const memCtx& ) = delete;
+        memCtx( memCtx && ) = delete;
+        memCtx( const memCtx && ) = delete;
+        memCtx& operator=(const memCtx& ) = delete;
 
         virtual ~memCtx() = default;
         
 
         [[nodiscard]]
-        memory_t getMemType() const {
+        virtual memory_t getMemType() const {
             return MEM_NONE;
         }
 
