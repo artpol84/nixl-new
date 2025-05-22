@@ -348,7 +348,7 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams* init_params)
     uw->regAmCallback(DISCONNECT, connectionTermAmCb, this);
     uw->regAmCallback(NOTIF_STR, notifAmCb, this);
 
-    cudaMemCtx = nixlCuda::memCtx::memCtxInit();
+    cudaMemCtx = nixlCuda::makeMemCtx();
     progressThreadStart();
 }
 
