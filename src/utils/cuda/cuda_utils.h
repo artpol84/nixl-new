@@ -42,7 +42,7 @@ namespace nixlCuda {
         memCtx& operator=(const memCtx& ) = delete;
 
         virtual ~memCtx() = default;
-        
+
 
         [[nodiscard]]
         virtual memory_t getMemType() const {

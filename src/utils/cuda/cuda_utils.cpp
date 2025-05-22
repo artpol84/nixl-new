@@ -40,12 +40,12 @@ namespace nixlCuda {
 
         [[nodiscard]]
         nixl_status_t queryVmm(const void *address, memory_t &type, int &id);
-        
+
         [[nodiscard]]
         nixl_status_t retainVmmCudaCtx(int id, CUcontext &newCtx) const;
 
         void releaseVmmCudaCtx(int id) const;
-        
+
         [[nodiscard]]
         nixl_status_t queryCuda(const void *address, memory_t &type, int &id,
                                 CUcontext &newCtx);
