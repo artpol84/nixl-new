@@ -25,10 +25,29 @@
 #include "absl/strings/numbers.h"
 #include <serdes/serdes.h>
 
+
+class nixlUcxCudaCtxGuard {
+    nixl::cuda::memCtx m_ctx;
+public:
+    nixlUcxCudaCtxGuard(nixl_mem_t nixl_mem, nixl::cuda::memCtx ctx) {
+        
+        if (nixl_mem == VRAM_SEG && ctx) {
+            auto status = ctx->push();
+            if (NIXL_IN_PROG == ctx) {
+                m_ctx = ctx;
+            }
+        }
+    }
+    ~nixlUcxCudaCtxGuard() {
+        if (m_ctx) {
+            m_ctx->pop();
+        }
+    }
+};
+
 /****************************************
  * UCX request management
 *****************************************/
-
 
 class nixlUcxIntReq : public nixlLinkElem<nixlUcxIntReq> {
     private:
@@ -595,7 +614,7 @@ nixl_status_t nixlUcxEngine::registerMem (const nixlBlobDesc &mem,
     size_t rkey_size;
 
     if (nixl_mem == VRAM_SEG) {
-        nixl_status_t status = cudaMemCtx->enableAddr((void*)mem.addr, mem.devId);
+        nixl_status_t status = cudaMemCtx->initFromAddr((void*)mem.addr, mem.devId);
         if (NIXL_IN_PROG == status) {
             // The context was updated and must be set in the progress thread
             // This procedure ensures that access to cudaMemCtx is serialized
@@ -696,7 +715,7 @@ nixl_status_t nixlUcxEngine::loadRemoteMD (const nixlBlobDesc &input,
                                            nixlBackendMD* &output)
 {
     // Set CUDA context of first device, UCX will anyways detect proper device when sending
-    nixlUcxCudaCtxGuard guard(nixl_mem, m_cudaPrimaryCtx);
+    nixlUcxCudaCtxGuard guard(nixl_mem, cudaMemCtx);
     return internalMDHelper(input.metaInfo, remote_agent, output);
 }
 

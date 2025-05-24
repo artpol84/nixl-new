@@ -24,15 +24,10 @@
  * Pointer Context
 *****************************************/
 
-namespace nixlCuda {
+namespace nixl::cuda {
     class memCtx {
     public:
-        enum memory_t {
-            MEM_NONE,
-            MEM_HOST,
-            MEM_DEV,
-            MEM_VMM_DEV,
-        } ;
+
     public:
         memCtx() = default;
         memCtx( memCtx& ) = delete;
@@ -43,20 +38,25 @@ namespace nixlCuda {
 
         virtual ~memCtx() = default;
 
-
-        [[nodiscard]]
-        virtual memory_t getMemType() const {
-            return MEM_NONE;
-        }
-
-        [[nodiscard]]
+s        [[nodiscard]]
         virtual nixl_status_t set() {
             // no-op for non-CUDA case
             return NIXL_SUCCESS;
         }
 
         [[nodiscard]]
-        virtual nixl_status_t enableAddr(const void *address, uint64_t chkDevId) {
+        virtual nixl_status_t push() {
+            // no-op for non-CUDA case
+            return NIXL_SUCCESS;
+        }
+
+        virtual nixl_status_t pop() {
+            // no-op for non-CUDA case
+            return NIXL_SUCCESS;
+        }
+
+        [[nodiscard]]
+        virtual nixl_status_t initFromAddr(const void *address, uint64_t chkDevId) {
             return NIXL_SUCCESS;
         }
     };
