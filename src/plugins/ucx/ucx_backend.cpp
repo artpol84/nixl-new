@@ -30,7 +30,7 @@ class nixlUcxCudaCtxGuard {
     std::shared_ptr<nixl::cuda::memCtx> m_ctx;
 public:
     nixlUcxCudaCtxGuard(nixl_mem_t nixl_mem, std::shared_ptr<nixl::cuda::memCtx> ctx) {
-        
+
         if (nixl_mem == VRAM_SEG) {
             auto status = ctx->pushIfNeed();
             if (NIXL_IN_PROG == status) {

@@ -47,7 +47,7 @@ protected:
 public:
 
     regularCtx() = default;
-    regularCtx(CUcontext c) : m_context(c) 
+    regularCtx(CUcontext c) : m_context(c)
     { }
 
     virtual ~regularCtx() = default;
@@ -80,14 +80,14 @@ public:
             return NIXL_ERR_NOT_FOUND;
         }
 
-        return (CUDA_SUCCESS == cuCtxPushCurrent(m_context)) ? 
+        return (CUDA_SUCCESS == cuCtxPushCurrent(m_context)) ?
                 NIXL_IN_PROG : NIXL_ERR_NOT_POSTED ;
     }
 
     [[nodiscard]]
     nixl_status_t
     pop() {
-        return (CUDA_SUCCESS == cuCtxPopCurrent(nullptr)) ? 
+        return (CUDA_SUCCESS == cuCtxPopCurrent(nullptr)) ?
             NIXL_SUCCESS : NIXL_ERR_UNKNOWN;
     }
 };
@@ -98,7 +98,7 @@ class primaryCtx : public regularCtx{
 
 public:
 
-    primaryCtx(int ordinal) : m_ordinal(ordinal) 
+    primaryCtx(int ordinal) : m_ordinal(ordinal)
     { }
 
     ~primaryCtx() override {
@@ -111,13 +111,13 @@ public:
     retain()
     {
         CUdevice device;
-    
+
         auto result = cuDeviceGet(&device, m_ordinal);
         if (result != CUDA_SUCCESS) {
             NIXL_ERROR << "cuDeviceGet() failed. result = " << result;
             return NIXL_ERR_UNKNOWN;
         }
-    
+
         unsigned int flags;
         int active;
         result = cuDevicePrimaryCtxGetState(device, &flags, &active);
@@ -126,19 +126,19 @@ public:
                     << result;
             return NIXL_ERR_UNKNOWN;
         }
-    
+
         if (!active) {
             NIXL_ERROR << "No active context found for CUDA device " << m_ordinal;
             return NIXL_ERR_INVALID_PARAM;
         }
-    
+
         result = cuDevicePrimaryCtxRetain(&m_context, device);
         if (result != CUDA_SUCCESS) {
             NIXL_ERROR << "cuDevicePrimaryCtxRetain() failed. result = "
                     << result;
             return NIXL_ERR_UNKNOWN;
         }
-    
+
         return NIXL_SUCCESS;
     }
 
@@ -155,7 +155,7 @@ public:
             return NIXL_ERR_NOT_FOUND;
         }
 
-        return (CUDA_SUCCESS == cuCtxPushCurrent(m_context)) ? 
+        return (CUDA_SUCCESS == cuCtxPushCurrent(m_context)) ?
                 NIXL_IN_PROG : NIXL_ERR_NOT_POSTED ;
     }
 };

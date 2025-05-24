@@ -235,7 +235,7 @@ int main()
         allocateVMM(0, len, address);
         assert(NIXL_IN_PROG == ctx->initFromAddr(address, 0));
         assert(NIXL_SUCCESS == ctx->set());
-    
+
         // VMM memory on a different device is a mismatch
         void *address2;
         allocateVMM(1, len, address2);
