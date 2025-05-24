@@ -42,9 +42,11 @@ enum memory_t {
 
 
 class regularCtx {
+protected:
     CUcontext m_context{nullptr};
 public:
 
+    regularCtx() = default;
     regularCtx(CUcontext c) : m_context(c) 
     { }
 
@@ -52,7 +54,6 @@ public:
 
     [[nodiscard]] nixl_status_t
     set() {
-
         if (nullptr == m_context) {
             return NIXL_ERR_NOT_FOUND;
         }
@@ -89,15 +90,25 @@ public:
         return (CUDA_SUCCESS == cuCtxPopCurrent(nullptr)) ? 
             NIXL_SUCCESS : NIXL_ERR_UNKNOWN;
     }
-
-}
+};
 
 class primaryCtx : public regularCtx{
     int m_ordinal;
     CUdevice m_device{CU_DEVICE_INVALID};
 
+public:
+
+    primaryCtx(int ordinal) : m_ordinal(ordinal) 
+    { }
+
+    ~primaryCtx() override {
+        if (m_context != nullptr) {
+            cuDevicePrimaryCtxRelease(m_device);
+        }
+    }
+
     [[nodiscard]] nixl_status_t
-    _retain()
+    retain()
     {
         CUdevice device;
     
@@ -117,7 +128,7 @@ class primaryCtx : public regularCtx{
         }
     
         if (!active) {
-            NIXL_ERROR << "No active context found for CUDA device " << id;
+            NIXL_ERROR << "No active context found for CUDA device " << m_ordinal;
             return NIXL_ERR_INVALID_PARAM;
         }
     
@@ -131,20 +142,9 @@ class primaryCtx : public regularCtx{
         return NIXL_SUCCESS;
     }
 
-public:
-
-    primaryCtx(int ordinal) : m_ordinal(ordinal) 
-    { }
-
-    ~primaryCtx() override {
-        if (m_context != nullptr) {
-            cuDevicePrimaryCtxRelease(m_device);
-        }
-    }
-
     [[nodiscard]]
     virtual nixl_status_t
-    pushIfNeed() {
+    pushIfNeed() override {
         CUcontext context;
             const auto res = cuCtxGetCurrent(&context);
         if (res != CUDA_SUCCESS || context != nullptr) {
@@ -214,7 +214,7 @@ err:
 }
 
 [[nodiscard]] nixl_status_t
-_queryCudaPtr(const void *address, memory_t &type, int &id, CUcontext &newCtx)
+_queryCudaPtr(const void *address, memory_t &type, int &outOrdinal, CUcontext &newCtx)
 {
     constexpr int numAttrs = 4;
     CUpointer_attribute attr_type[numAttrs];
@@ -222,14 +222,14 @@ _queryCudaPtr(const void *address, memory_t &type, int &id, CUcontext &newCtx)
     CUmemorytype cudaMemType = CU_MEMORYTYPE_HOST;
     uint32_t is_managed = 0;
     CUresult result;
-    int devOrdinal;
+    int ordinal;
 
     attr_type[0] = CU_POINTER_ATTRIBUTE_MEMORY_TYPE;
     attr_data[0] = &cudaMemType;
     attr_type[1] = CU_POINTER_ATTRIBUTE_IS_MANAGED;
     attr_data[1] = &is_managed;
     attr_type[2] = CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL;
-    attr_data[2] = &devOrdinal;
+    attr_data[2] = &ordinal;
     attr_type[3] = CU_POINTER_ATTRIBUTE_CONTEXT;
     attr_data[3] = &newCtx;
 
@@ -240,7 +240,7 @@ _queryCudaPtr(const void *address, memory_t &type, int &id, CUcontext &newCtx)
         return NIXL_ERR_NOT_FOUND;
     }
 
-    id = devOrdinal;
+    outOrdinal = ordinal;
     switch(cudaMemType) {
     case CU_MEMORYTYPE_DEVICE:
         type = MEM_DEV;
@@ -268,7 +268,7 @@ _queryCudaPtr(const void *address, memory_t &type, int &id, CUcontext &newCtx)
 namespace nixl::cuda {
 
 /****************************************
- * CUDA nixlCudaPtr class
+ * CUDA memory context class
 *****************************************/
 
 class memCtxImpl : public memCtx {
@@ -279,7 +279,9 @@ class memCtxImpl : public memCtx {
 public:
 
     memCtxImpl() {
-        ctx = std::make_unique<regularCtx>(defaultCudaDeviceOrdinal);
+        // Create default context for push/pop operations
+        // Do not retain it unless needed
+        ctx = std::make_unique<primaryCtx>(defaultCudaDeviceOrdinal);
     }
 
     // TODO: can it be default?
@@ -291,20 +293,17 @@ public:
 
     [[nodiscard]]
     nixl_status_t set() override {
-        CUresult result;
-    
-        if (0 > devOrdinal) {
+        if (0 > ordinal) {
             // Not context was set - use empry op
             // Alternatively we can set primary device context
             return NIXL_SUCCESS;
         }
-    
         return ctx->set();
     }
 
     [[nodiscard]]
-    nixl_status_t push() override {
-        return ctx->push();
+    nixl_status_t pushIfNeed() override {
+        return ctx->pushIfNeed();
     }
 
     [[nodiscard]]
@@ -323,11 +322,11 @@ memCtxImpl::initFromAddr(const void *address, uint64_t chkDevId)
 {
     memory_t addrMemType = MEM_NONE;
     CUcontext newCtx;
-    int newDevId;
+    int newOrdinal;
 
-    nixl_status_t status = _queryVmmPtr(address, addrMemType, newDevId);
+    nixl_status_t status = _queryVmmPtr(address, addrMemType, newOrdinal);
     if (status == NIXL_ERR_NOT_FOUND) {
-        status = _queryCudaPtr(address, addrMemType, newDevId, newCtx);
+        status = _queryCudaPtr(address, addrMemType, newOrdinal, newCtx);
         if (status == NIXL_ERR_NOT_FOUND) {
             addrMemType = MEM_HOST;
             status = NIXL_SUCCESS;
@@ -351,37 +350,39 @@ memCtxImpl::initFromAddr(const void *address, uint64_t chkDevId)
         return NIXL_SUCCESS;
     }
 
-    if (static_cast<uint64_t>(newDevId) != chkDevId) {
+    if (static_cast<uint64_t>(newOrdinal) != chkDevId) {
         NIXL_DEBUG << "Mismatch between the expected and actual CUDA device id";
-        NIXL_DEBUG << "Expect: " << chkDevId << ", have: " << newDevId;
+        NIXL_DEBUG << "Expect: " << chkDevId << ", have: " << newOrdinal;
         return NIXL_ERR_MISMATCH;
     }
 
     // The context was already set
-    if (0 > devOrdinal) {
+    if (0 <= ordinal) {
         // UCX up to 1.18 only supports one device context per
         // UCP context. Enforce that!
-        if (devOrdinal != newDevId) {
+        if (ordinal != newOrdinal) {
             status = NIXL_ERR_MISMATCH;
         }
         return status;
     }
 
+
     // Initialize the context
     switch(addrMemType) {
     case MEM_VMM_DEV:
     case MEM_DEV:
-        try {
-            if (MEM_VMM_DEV == addrMemType) {
-                ctx = std::make_unique<primaryCtx>(devOrdinal);
-            } else {
-                ctx = std::make_unique<regularCtx>(newCtx);
+        if (MEM_VMM_DEV == addrMemType) {
+            auto ctxP = std::make_unique<primaryCtx>(newOrdinal);
+            status = ctxP->retain();
+            if (NIXL_SUCCESS != status) {
+                return status;
             }
-        } catch() {
-            return NIXL_ERR_UNKNOWN;
+            ctx = std::move(ctxP);
+        } else {
+            ctx = std::make_unique<regularCtx>(newCtx);
         }
         status = NIXL_IN_PROG;
-        devOrdinal = newDevId;
+        ordinal = newOrdinal;
         break;
     default:
         NIXL_ERROR << "Unknown issue - memType is invalid: " <<  addrMemType;
@@ -393,19 +394,19 @@ memCtxImpl::initFromAddr(const void *address, uint64_t chkDevId)
 
 #endif
 
-std::unique_ptr<memCtx>
+std::shared_ptr<memCtx>
 makeMemCtx()
 {
     // Environment fixup
     if (getenv("NIXL_DISABLE_CUDA_ADDR_WA")) {
         // If the workarounf is disabled - return the dummy class
         NIXL_INFO << "WARNING: disabling CUDA address workaround";
-        return std::make_unique<memCtx>();
+        return std::make_shared<memCtx>();
     } else {
 #ifdef HAVE_CUDA
-        return std::make_unique<memCtxImpl>();
+        return std::make_shared<memCtxImpl>();
 #else
-     return std::make_unique<memCtx>();
+     return std::make_shared<memCtx>();
 #endif
     }
 }

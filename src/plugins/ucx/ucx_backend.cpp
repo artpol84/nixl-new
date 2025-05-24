@@ -27,13 +27,13 @@
 
 
 class nixlUcxCudaCtxGuard {
-    nixl::cuda::memCtx m_ctx;
+    std::shared_ptr<nixl::cuda::memCtx> m_ctx;
 public:
-    nixlUcxCudaCtxGuard(nixl_mem_t nixl_mem, nixl::cuda::memCtx ctx) {
+    nixlUcxCudaCtxGuard(nixl_mem_t nixl_mem, std::shared_ptr<nixl::cuda::memCtx> ctx) {
         
-        if (nixl_mem == VRAM_SEG && ctx) {
-            auto status = ctx->push();
-            if (NIXL_IN_PROG == ctx) {
+        if (nixl_mem == VRAM_SEG) {
+            auto status = ctx->pushIfNeed();
+            if (NIXL_IN_PROG == status) {
                 m_ctx = ctx;
             }
         }
@@ -376,7 +376,7 @@ nixlUcxEngine::nixlUcxEngine (const nixlBackendInitParams* init_params)
     uw->regAmCallback(DISCONNECT, connectionTermAmCb, this);
     uw->regAmCallback(NOTIF_STR, notifAmCb, this);
 
-    cudaMemCtx = nixlCuda::makeMemCtx();
+    cudaMemCtx = nixl::cuda::makeMemCtx();
     progressThreadStart();
 }
 

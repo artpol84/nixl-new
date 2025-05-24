@@ -38,14 +38,14 @@ namespace nixl::cuda {
 
         virtual ~memCtx() = default;
 
-s        [[nodiscard]]
+        [[nodiscard]]
         virtual nixl_status_t set() {
             // no-op for non-CUDA case
             return NIXL_SUCCESS;
         }
 
         [[nodiscard]]
-        virtual nixl_status_t push() {
+        virtual nixl_status_t pushIfNeed() {
             // no-op for non-CUDA case
             return NIXL_SUCCESS;
         }
@@ -62,7 +62,7 @@ s        [[nodiscard]]
     };
 
     [[nodiscard]]
-    std::unique_ptr<memCtx> makeMemCtx();
+    std::shared_ptr<memCtx> makeMemCtx();
 
     [[nodiscard]]
     uint32_t numDevices();
