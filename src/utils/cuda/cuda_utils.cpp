@@ -370,13 +370,13 @@ memCtxImpl::initFromAddr(const void *address, uint64_t chkDevId)
     // Initialize the context
     switch(addrMemType) {
     case MEM_VMM_DEV:
-    case MEM_DEV:
+    case MEM_DEV: {
         // Try using Primary context whenever possible
         auto ctxP = std::make_unique<primaryCtx>(newOrdinal);
         status = ctxP->retain();
         if (NIXL_SUCCESS == status) {
             ctx = std::move(ctxP);
-        } else if (MEM_DEV == addrMemType) {)
+        } else if (MEM_DEV == addrMemType) {
             ctx = std::make_unique<regularCtx>(newCtx);
         } else {
             return status;
@@ -384,12 +384,14 @@ memCtxImpl::initFromAddr(const void *address, uint64_t chkDevId)
         status = NIXL_IN_PROG;
         ordinal = newOrdinal;
         break;
-    default:
+    }
+    case MEM_NONE:
+    case MEM_HOST:
         NIXL_ERROR << "Unknown issue - memType is invalid: " <<  addrMemType;
-        return NIXL_ERR_INVALID_PARAM;
+        status = NIXL_ERR_INVALID_PARAM;
+        break;
     }
     return status;
-
 }
 
 #endif
