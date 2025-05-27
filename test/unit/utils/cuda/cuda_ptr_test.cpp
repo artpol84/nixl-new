@@ -55,7 +55,7 @@ void allocateCUDA(int dev_id, size_t len, void* &addr, CUcontext *context)
 
     CHECK_CUDA_DRIVER_ERROR(cuCtxPopCurrent(nullptr), "Failed to pop the context");
     CHECK_CUDA_DRIVER_ERROR(cuCtxGetCurrent(&contextTmp), "Failed to query current context");
-    assert(contextTmp == nullptr);
+    assert(nullptr == contextTmp);
 }
 
 void releaseCUDA(int dev_id, void* addr)
@@ -128,7 +128,7 @@ void allocateVMM(int dev_id, size_t len, void* &_addr, CUcontext *context)
     CUcontext contextTmp;
     CHECK_CUDA_DRIVER_ERROR(cuCtxPopCurrent(nullptr), "Failed to pop the context");
     CHECK_CUDA_DRIVER_ERROR(cuCtxGetCurrent(&contextTmp), "Failed to query current context");
-    assert(contextTmp == nullptr);
+    assert(nullptr == contextTmp);
 }
 
 void releaseVMM(int dev_id, size_t len, void* addr)
@@ -193,6 +193,41 @@ int main()
         cout << "      >>>> PASSED! <<<<<<<" << endl;
         releaseCUDA(0, address);
         cout << "*************************" << endl;
+    }
+
+
+    /* Test push/pop when no context is set */
+    {
+        CUcontext context;
+        CHECK_CUDA_DRIVER_ERROR(cuCtxGetCurrent(&context), "Failed to query current context");
+        assert(nullptr == context);
+        
+        std::shared_ptr<nixl::cuda::memCtx> ctx = nixl::cuda::makeMemCtx();
+        assert(NIXL_IN_PROG == ctx->pushIfNeed());
+        CHECK_CUDA_DRIVER_ERROR(cuCtxGetCurrent(&context), "Failed to query current context");
+        assert(nullptr != context);
+
+        assert(NIXL_SUCCESS == ctx->pop());
+        CHECK_CUDA_DRIVER_ERROR(cuCtxGetCurrent(&context), "Failed to query current context");
+        assert(nullptr == context);
+    }
+
+    /* Test push/pop when context is present */
+    {
+        CUcontext context, context2;
+
+        CHECK_CUDA_ERROR(cudaSetDevice(1), "Failed to cudaSetDevice()");
+        CHECK_CUDA_DRIVER_ERROR(cuCtxGetCurrent(&context), "Failed to query current context");
+        assert(nullptr != context);
+
+        std::shared_ptr<nixl::cuda::memCtx> ctx = nixl::cuda::makeMemCtx();
+        assert(NIXL_SUCCESS == ctx->pushIfNeed());
+        CHECK_CUDA_DRIVER_ERROR(cuCtxGetCurrent(&context2), "Failed to query current context");
+        assert(context2 == context);
+
+        CHECK_CUDA_DRIVER_ERROR(cuCtxPopCurrent(nullptr), "Failed to pop the context");
+        CHECK_CUDA_DRIVER_ERROR(cuCtxGetCurrent(&context), "Failed to query current context");
+        assert(nullptr == context);
     }
 
 
