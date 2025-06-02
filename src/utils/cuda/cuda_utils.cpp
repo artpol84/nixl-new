@@ -58,7 +58,7 @@ private:
             return status;
         }
         if (nullptr == m_context) {
-            NIXL_FATAL("Unexpected NULL context");
+            NIXL_FATAL << "Unexpected NULL context";
         }
 
         return NIXL_SUCCESS;
